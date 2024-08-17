@@ -13,6 +13,7 @@ assets:                                                   # Array of "assets", e
       name: "Address #1"
     - address: "0xEd89da9DD83A0D703991ee833969489278B260E7"
       name: "Address #2"
+
 - id: nft_example
   blockchain:
     name: "Ethereum Mainnet"
@@ -20,11 +21,12 @@ assets:                                                   # Array of "assets", e
   module: "erc721"
   name: BAYC
   decimals: 0
-  extra_parameters:
+  extra_parameters:                                           # Some modules need extra parameters to work. ERC20 and ERC721 modules need a smart contract address.
     contract_address: "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"
   accounts:
     - address: "0x63BE292a1e64739C79493cf6f2F99BD75B49133E"
       name: "Address #1"
+
 - id: token_example
   blockchain:
     name: "Ethereum Mainnet"
@@ -37,6 +39,7 @@ assets:                                                   # Array of "assets", e
   accounts:
     - address: "0x1C727a55eA3c11B0ab7D3a361Fe0F3C47cE6de5d"
       name: "Address #1"
+
 - id: polygon_example
   blockchain:
     name: "Polygon Mainnet"
@@ -49,6 +52,7 @@ assets:                                                   # Array of "assets", e
       name: "Null address"
     - address: "0xaEdE0422f445B95BfEdC7C1220c9bB5374cD7673"
       name: "Address #1"
+
 - id: arbitrum_example
   blockchain:
     name: "Arbitrum One"
@@ -61,6 +65,7 @@ assets:                                                   # Array of "assets", e
       name: "Null address"
     - address: "0x0a0357e50Db54027f39373db16EF3461CE770FEB"
       name: "Address #1"
+
 - id: polkadot_example
   blockchain:
     name: "Polkadot Mainnet"
@@ -71,6 +76,7 @@ assets:                                                   # Array of "assets", e
   accounts:
     - address: "15DdAZzu5DAwFsg5jMFfZpxKHtsBiX8GyargkzfDdv3uic2"
       name: "Address #1"
+
 - id: cosmos_example
   blockchain:
     name: "CosmosHub"

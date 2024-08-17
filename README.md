@@ -11,6 +11,25 @@
 - **Configurable Assets and Wallets**: Easily specify which wallets and assets to monitor via a simple configuration file.
 - **Modular Design**: Extend the exporter with custom modules to support additional asset types without modifying the core codebase.
 
+## Available Modules
+
+The following modules are currently available:
+
+- **`evm_native`**:  
+  Fetches the native balance for wallets on Ethereum and other EVM-compatible chains.
+
+- **`cosmos_native`**:  
+  Retrieves the native balance for wallets on Cosmos SDK-based chains.
+
+- **`substrate_native`**:  
+  Collects the native balance for wallets on Polkadot and other Substrate-based chains.
+
+- **`erc20`**:  
+  Retrieves the balance of ERC20 tokens on EVM chains. This module requires an additional asset parameter `extra_parameters.contract_address` to specify the contract address of the ERC20 token.
+
+- **`erc721`**:  
+  Fetches the balance of ERC721 tokens (non-fungible tokens) on EVM chains. Similar to `erc20`, this module requires the `extra_parameters.contract_address` to specify the contract address of the ERC721 token.
+
 ## Getting Started
 
 ### Configuration
