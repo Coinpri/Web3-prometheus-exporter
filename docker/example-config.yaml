@@ -54,7 +54,7 @@ assets:                                                   # Array of "assets", e
     name: "Arbitrum One"
     rpc_url: "https://rpc.ankr.com/arbitrum/"
   module: "evm_native"
-  name: Ether
+  name: Arbitrum-Ether
   decimals: 18
   accounts:
     - address: "0x0000000000000000000000000000000000000000"
