@@ -1,0 +1,83 @@
+assets:                                                   # Array of "assets", each asset is on one blockchain and can have multiple acconuts to check the balances of
+- id: ethereum_example                                       # Asset ID - must be unique, but you can put whatever you want.
+  blockchain:
+    name: "Ethereum Mainnet"                                  # Blockchain name - cosmetic
+    rpc_url: "https://rpc.ankr.com/eth"                       # Blockchain RPC URL
+  module: "evm_native"                                        # module name - must match one of the file names in the src/targets directory. For instance, put "evm_native" to use the "evm_native.py" module which can query EVM bockchains
+  name: Ether                                                 # Name of the asset - cosmetic
+  decimals: 18                                                # Decimals - used to properly calculate assets in the dashboards
+  accounts:                                                   # Array of "accounts"
+    - address: "0x0000000000000000000000000000000000000000"       # Account address
+      name: "Null address"                                        # Name of the account - cosmetic
+    - address: "0x9F17203888dc74360C838bc906ce44d9f913E932"
+      name: "Address #1"
+    - address: "0xEd89da9DD83A0D703991ee833969489278B260E7"
+      name: "Address #2"
+- id: nft_example
+  blockchain:
+    name: "Ethereum Mainnet"
+    rpc_url: "https://rpc.ankr.com/eth"
+  module: "erc721"
+  name: BAYC
+  decimals: 0
+  extra_parameters:
+    contract_address: "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"
+  accounts:
+    - address: "0x63BE292a1e64739C79493cf6f2F99BD75B49133E"
+      name: "Address #1"
+- id: token_example
+  blockchain:
+    name: "Ethereum Mainnet"
+    rpc_url: "https://rpc.ankr.com/eth"
+  module: "erc20"
+  name: BAT
+  decimals: 18
+  extra_parameters:
+    contract_address: "0x0D8775F648430679A709E98d2b0Cb6250d2887EF"
+  accounts:
+    - address: "0x1C727a55eA3c11B0ab7D3a361Fe0F3C47cE6de5d"
+      name: "Address #1"
+- id: polygon_example
+  blockchain:
+    name: "Polygon Mainnet"
+    rpc_url: "https://rpc.ankr.com/polygon"
+  module: "evm_native"
+  name: Matic
+  decimals: 18
+  accounts:
+    - address: "0x0000000000000000000000000000000000000000"
+      name: "Null address"
+    - address: "0xaEdE0422f445B95BfEdC7C1220c9bB5374cD7673"
+      name: "Address #1"
+- id: arbitrum_example
+  blockchain:
+    name: "Arbitrum One"
+    rpc_url: "https://rpc.ankr.com/arbitrum/"
+  module: "evm_native"
+  name: Ether
+  decimals: 18
+  accounts:
+    - address: "0x0000000000000000000000000000000000000000"
+      name: "Null address"
+    - address: "0x0a0357e50Db54027f39373db16EF3461CE770FEB"
+      name: "Address #1"
+- id: polkadot_example
+  blockchain:
+    name: "Polkadot Mainnet"
+    rpc_url: "https://polkadot-rpc.publicnode.com/"
+  module: "substrate_native"
+  name: Polkadot
+  decimals: 10
+  accounts:
+    - address: "15DdAZzu5DAwFsg5jMFfZpxKHtsBiX8GyargkzfDdv3uic2"
+      name: "Address #1"
+- id: cosmos_example
+  blockchain:
+    name: "CosmosHub"
+    rpc_url: "https://cosmos-rest.publicnode.com/"
+  module: "cosmos_native"
+  name: Atom
+  decimals: 6
+  accounts:
+    - address: "cosmos1znmztpna8ym6pravwyrjp5uvxsv7z03655v0pg"
+      name: "Address #1"

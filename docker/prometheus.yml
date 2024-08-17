@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus_target'
+    static_configs:
+      - targets: ['web3-prometheus-exporter:8990']
