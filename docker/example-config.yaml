@@ -87,3 +87,7 @@ assets:                                                   # Array of "assets", e
   accounts:
     - address: "cosmos1znmztpna8ym6pravwyrjp5uvxsv7z03655v0pg"
       name: "Address #1"
+      is_validator: true
+    - address: "cosmos1z8zjv3lntpwxua0rtpvgrcwl0nm0tltgyuy0nd"
+      name: "Address #2"
+      is_validator: true

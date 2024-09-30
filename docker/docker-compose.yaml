@@ -26,6 +26,8 @@ services:
     build: ..
     volumes:
       - ./example-config.yaml:/app/config.yaml
+    ports:
+      - 8990:8990
 
 volumes:
   prometheus_data: {}

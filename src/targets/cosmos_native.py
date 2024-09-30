@@ -2,6 +2,18 @@ import requests
 from structures import Balance, Account
 from typing import List, Dict, Any
 
+possible_validator_statuses = [
+    "up",
+    "down"
+]
+
+def check_validator_status(rpc_url: str, account: Account, extra_parameters: Dict[Any,Any]) -> Dict[str,bool] :
+    validator_status = is_validator_up(account.address)
+    result = dict.fromkeys(possible_validator_statuses, False)
+    result["up"] = validator_status
+    result["down"] = not validator_status
+    return result
+
 def get_balance(rpc_url: str, account: Account, extra_parameters: Dict[Any,Any]) -> List[Balance] :
     headers = {
         'Content-Type': 'application/json',
@@ -22,4 +34,8 @@ def get_balance(rpc_url: str, account: Account, extra_parameters: Dict[Any,Any])
         return balances
     else:
         raise Exception("Error in response: " + str(result))
-    
+
+def is_validator_up(address: str) -> bool:
+    if address == "cosmos1z8zjv3lntpwxua0rtpvgrcwl0nm0tltgyuy0nd":
+        return True
+    return False
