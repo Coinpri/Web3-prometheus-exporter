@@ -5,6 +5,7 @@ annotated-types==0.7.0
 async-timeout==4.0.3
 attrs==24.2.0
 base58==2.1.1
+bech32==1.2.0
 bitarray==2.9.2
 certifi==2024.7.4
 cffi==1.17.0
