@@ -46,7 +46,7 @@ def is_validator_up(rpc_url: str, address: str, window_block_missed_threshold: i
 
     url = f"cosmos/slashing/v1beta1/signing_infos/{valcons_address}"
     result = query_cosmos_rpc(rpc_url, url)
-    block_missed = result['val_signing_info']['missed_blocks_counter']
+    block_missed = int(result['val_signing_info']['missed_blocks_counter'])
     if block_missed > window_block_missed_threshold:
         return False
     return True
