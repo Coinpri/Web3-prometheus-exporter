@@ -86,7 +86,7 @@ assets:                                                   # Array of "assets", e
   decimals: 6
   extra_parameters:
     validator:
-      window_block_missed_threshold: 5
+      window_block_missed_threshold: 15
   accounts:
     - address: "cosmos10wljxpl03053h9690apmyeakly3ylhejxgve8g"
       name: "Ledger Validator"
