@@ -19,6 +19,8 @@ class Account(BaseModel):
     name: str
     balances: List[Balance] = []
     extra_args: Any = None
+    is_validator: bool = False
+    validator_statuses: Dict[str,bool] = None
 
 class Asset(BaseModel):
     id: str

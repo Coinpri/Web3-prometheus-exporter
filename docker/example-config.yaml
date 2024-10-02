@@ -84,6 +84,13 @@ assets:                                                   # Array of "assets", e
   module: "cosmos_native"
   name: Atom
   decimals: 6
+  extra_parameters:
+    validator:
+      window_block_missed_threshold: 5
   accounts:
-    - address: "cosmos1znmztpna8ym6pravwyrjp5uvxsv7z03655v0pg"
-      name: "Address #1"
+    - address: "cosmos10wljxpl03053h9690apmyeakly3ylhejxgve8g"
+      name: "Ledger Validator"
+      is_validator: true
+    - address: "cosmos1z8zjv3lntpwxua0rtpvgrcwl0nm0tltgyuy0nd"
+      name: "Kraken"
+      is_validator: true
