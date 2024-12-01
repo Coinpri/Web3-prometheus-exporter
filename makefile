@@ -10,15 +10,15 @@ all: run
 
 # Build and run the Docker image
 run:
-	docker build -t $(IMAGE_NAME) .
-	docker run --rm --name web3-prometheus-exporter -v $(PWD)/docker/example-config.yaml:/app/config.yaml -p $(HOST_PORT):$(APP_PORT) $(IMAGE_NAME)
+	podman build -t $(IMAGE_NAME) .
+	podman run --rm --name web3-prometheus-exporter -v $(PWD)/docker/example-config.yaml:/app/config.yaml -p $(HOST_PORT):$(APP_PORT) $(IMAGE_NAME)
 
 # Tag and push the Docker image
 push: check_version
-	docker tag $(IMAGE_NAME) $(IMAGE_REPO)/$(IMAGE_NAME):latest
-	docker tag $(IMAGE_NAME) $(IMAGE_REPO)/$(IMAGE_NAME):$(VERSION)
-	docker push $(IMAGE_REPO)/$(IMAGE_NAME):latest
-	docker push $(IMAGE_REPO)/$(IMAGE_NAME):$(VERSION)
+	podman tag $(IMAGE_NAME) $(IMAGE_REPO)/$(IMAGE_NAME):latest
+	podman tag $(IMAGE_NAME) $(IMAGE_REPO)/$(IMAGE_NAME):$(VERSION)
+	podman push $(IMAGE_REPO)/$(IMAGE_NAME):latest
+	podman push $(IMAGE_REPO)/$(IMAGE_NAME):$(VERSION)
 
 # Check if the version is provided
 check_version:

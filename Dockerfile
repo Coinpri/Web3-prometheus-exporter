@@ -1,14 +1,18 @@
-FROM python:3.10-slim AS test
+FROM ghcr.io/gleam-lang/gleam:v1.6.2-erlang-alpine as build
 WORKDIR /app
-COPY requirements-dev.txt .
-RUN pip install --no-cache-dir -r requirements-dev.txt
-COPY src ./src
-COPY tests ./tests
-RUN pytest
+COPY gleam.toml .
+COPY manifest.toml .
+COPY test test
+COPY src src
 
-FROM python:3.10-slim AS run
+RUN gleam deps download
+RUN gleam test
+RUN gleam export erlang-shipment
+
+FROM ghcr.io/gleam-lang/gleam:v1.6.2-erlang-alpine as run
+
+COPY --from=build /app/build/erlang-shipment /app
+
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY --from=test /app/src .
-ENTRYPOINT ["python", "main.py"]
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["run"]
