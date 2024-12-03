@@ -1,3 +1,8 @@
+blockchains:
+- name: "Ethereum Mainnet"
+  rpc_url: "https://rpc.ankr.com/eth"
+  type: evm
+
 assets:                                                   # Array of "assets", each asset is on one blockchain and can have multiple acconuts to check the balances of
 - id: ethereum_example                                       # Asset ID - must be unique, but you can put whatever you want.
   blockchain:
