@@ -1,4 +1,7 @@
 import glaml
+import gleam/dict.{type Dict}
+import gleam/erlang/process.{type Subject}
+import gleam/otp/actor
 import gleam/result
 import gleam/uri.{type Uri}
 import snag.{type Result}
@@ -9,21 +12,39 @@ import eth_crypto/eth.{type Address, type SmartContract}
 import eth_crypto/standards/erc20
 import eth_crypto/standards/erc721
 
-pub opaque type Builder {
-  Builder(name: String, rpc_url: Uri, accounts: List(Account))
+pub type Message(id) {
+  QueryNativeBalance(address: eth.Address, subject: Subject(Int))
+  ViewCallContract(
+    contract_id: id,
+    function_name: String,
+    data: String,
+    subject: Subject(String),
+  )
+}
+
+pub opaque type Builder(account_id) {
+  Builder(
+    blockchain_name: String,
+    rpc_url: Uri,
+    accounts: Dict(account_id, Account),
+  )
 }
 
 pub opaque type Account {
-  Account(asset: Asset, address: Address)
+  Account(account_name: String, asset: Asset, address: Address)
 }
 
 pub opaque type Asset {
   Native
-  ERC20(contract: SmartContract)
-  ERC721(contract: SmartContract)
+  ERC20(contract: SmartContract(String))
+  ERC721(contract: SmartContract(String))
 }
 
-pub fn from_yaml(node: glaml.DocNode) -> Result(Builder) {
+pub fn new(blockchain_name: String, rpc_url: Uri) -> Builder(id) {
+  Builder(blockchain_name, rpc_url, dict.new())
+}
+
+pub fn from_yaml(node: glaml.DocNode) -> Result(Builder(id)) {
   use name_node <- result.try(
     glaml.sugar(node, "name")
     |> result.try_recover(fn(_) {
@@ -44,20 +65,39 @@ pub fn from_yaml(node: glaml.DocNode) -> Result(Builder) {
     uri.parse(rpc_url_string)
     |> result.try_recover(fn(_) { snag.error("rpc url could not be parsed") }),
   )
-  Ok(Builder(name, rpc_url, []))
+  Ok(Builder(name, rpc_url, dict.new()))
 }
 
-pub fn new(name: String, rpc_url: Uri) -> Builder {
-  Builder(name, rpc_url, [])
+pub fn to_actor(builder: Builder(id)) -> actor.Spec(Nil, Message(id)) {
+  actor.Spec(
+    init: fn() { actor.Ready(Nil, process.new_selector()) },
+    init_timeout: 10,
+    loop: fn(msg: Message(id), _state: Nil) {
+      case msg {
+        QueryNativeBalance(_address, subject) -> process.send(subject, 69_420)
+        ViewCallContract(_contract_id, _function_name, _data, subject) ->
+          process.send(subject, "Hi from " <> builder.blockchain_name)
+      }
+      actor.continue(Nil)
+    },
+  )
 }
 
-pub fn add_account(evm_mon: Builder, account: Account) -> Builder {
-  Builder(..evm_mon, accounts: [account, ..evm_mon.accounts])
+pub fn add_account(
+  builder: Builder(id),
+  id: id,
+  account: Account,
+) -> Builder(id) {
+  Builder(..builder, accounts: dict.insert(builder.accounts, id, account))
 }
 
-pub fn new_account(asset: Asset, address: String) -> Result(Account) {
+pub fn new_account(
+  name: String,
+  asset: Asset,
+  address: String,
+) -> Result(Account) {
   use addr <- result.try(eth.address_from_string(address))
-  Ok(Account(asset, addr))
+  Ok(Account(name, asset, addr))
 }
 
 pub fn new_native_asset() -> Asset {
