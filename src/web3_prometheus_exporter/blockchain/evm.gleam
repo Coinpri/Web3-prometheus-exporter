@@ -1,5 +1,4 @@
 import glaml
-import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/otp/actor
 import gleam/result
@@ -23,15 +22,11 @@ pub type Message(id) {
 }
 
 pub opaque type Builder(account_id) {
-  Builder(
-    blockchain_name: String,
-    rpc_url: Uri,
-    accounts: Dict(account_id, Account),
-  )
+  Builder(blockchain_name: String, rpc_url: Uri)
 }
 
 pub opaque type Account {
-  Account(account_name: String, asset: Asset, address: Address)
+  Account(asset: Asset, address: Address)
 }
 
 pub opaque type Asset {
@@ -40,8 +35,11 @@ pub opaque type Asset {
   ERC721(contract: SmartContract(String))
 }
 
-pub fn new(blockchain_name: String, rpc_url: Uri) -> Builder(id) {
-  Builder(blockchain_name, rpc_url, dict.new())
+pub fn new(
+  blockchain_name blockchain_name: String,
+  rpc_url rpc_url: Uri,
+) -> Builder(id) {
+  Builder(blockchain_name, rpc_url)
 }
 
 pub fn from_yaml(node: glaml.DocNode) -> Result(Builder(id)) {
@@ -65,7 +63,7 @@ pub fn from_yaml(node: glaml.DocNode) -> Result(Builder(id)) {
     uri.parse(rpc_url_string)
     |> result.try_recover(fn(_) { snag.error("rpc url could not be parsed") }),
   )
-  Ok(Builder(name, rpc_url, dict.new()))
+  Ok(Builder(name, rpc_url))
 }
 
 pub fn to_actor(builder: Builder(id)) -> actor.Spec(Nil, Message(id)) {
@@ -76,28 +74,25 @@ pub fn to_actor(builder: Builder(id)) -> actor.Spec(Nil, Message(id)) {
       case msg {
         QueryNativeBalance(_address, subject) -> process.send(subject, 69_420)
         ViewCallContract(_contract_id, _function_name, _data, subject) ->
-          process.send(subject, "Hi from " <> builder.blockchain_name)
+          process.send(
+            subject,
+            "Hi from "
+              <> builder.blockchain_name
+              <> ".\nMy RPC URL is "
+              <> uri.to_string(builder.rpc_url),
+          )
       }
       actor.continue(Nil)
     },
   )
 }
 
-pub fn add_account(
-  builder: Builder(id),
-  id: id,
-  account: Account,
-) -> Builder(id) {
-  Builder(..builder, accounts: dict.insert(builder.accounts, id, account))
-}
-
 pub fn new_account(
-  name: String,
-  asset: Asset,
-  address: String,
+  asset asset: Asset,
+  address address: String,
 ) -> Result(Account) {
   use addr <- result.try(eth.address_from_string(address))
-  Ok(Account(name, asset, addr))
+  Ok(Account(asset, addr))
 }
 
 pub fn new_native_asset() -> Asset {
