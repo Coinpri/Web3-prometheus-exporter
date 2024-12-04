@@ -1,7 +1,11 @@
 import glaml
+import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
+import gleam/int
+import gleam/list
 import gleam/otp/actor
 import gleam/result
+import gleam/string
 import gleam/uri.{type Uri}
 import snag.{type Result}
 
@@ -11,38 +15,43 @@ import eth_crypto/eth.{type Address, type SmartContract}
 import eth_crypto/standards/erc20
 import eth_crypto/standards/erc721
 
-pub type Message(id) {
-  QueryNativeBalance(address: eth.Address, subject: Subject(Int))
+pub type Message {
+  QueryNativeBalance(address: eth.Address, subject: Subject(Result(Int)))
   ViewCallContract(
-    contract_id: id,
+    contract: SmartContract,
     function_name: String,
-    data: String,
-    subject: Subject(String),
+    data: BitArray,
+    subject: Subject(Result(String)),
   )
 }
 
-pub opaque type Builder(account_id) {
-  Builder(blockchain_name: String, rpc_url: Uri)
+pub opaque type AccountMessage {
+  QueryBalance(subject: Subject(Int))
+  GetAccount(subject: Subject(Account))
 }
 
-pub opaque type Account {
-  Account(asset: Asset, address: Address)
+pub opaque type Builder {
+  Builder(blockchain_name: String, rpc_url: Uri, assets: Dict(String, Asset))
+}
+
+type Account {
+  Account(address: Address)
 }
 
 pub opaque type Asset {
-  Native
-  ERC20(contract: SmartContract(String))
-  ERC721(contract: SmartContract(String))
+  Native(accounts: Dict(String, Account))
+  ERC20(accounts: Dict(String, Account), contract: SmartContract)
+  ERC721(accounts: Dict(String, Account), contract: SmartContract)
 }
 
 pub fn new(
   blockchain_name blockchain_name: String,
   rpc_url rpc_url: Uri,
-) -> Builder(id) {
-  Builder(blockchain_name, rpc_url)
+) -> Builder {
+  Builder(blockchain_name, rpc_url, dict.new())
 }
 
-pub fn from_yaml(node: glaml.DocNode) -> Result(Builder(id)) {
+pub fn from_yaml(node: glaml.DocNode) -> Result(Builder) {
   use name_node <- result.try(
     glaml.sugar(node, "name")
     |> result.try_recover(fn(_) {
@@ -63,50 +72,90 @@ pub fn from_yaml(node: glaml.DocNode) -> Result(Builder(id)) {
     uri.parse(rpc_url_string)
     |> result.try_recover(fn(_) { snag.error("rpc url could not be parsed") }),
   )
-  Ok(Builder(name, rpc_url))
+  Ok(Builder(name, rpc_url, dict.new()))
 }
 
-pub fn to_actor(builder: Builder(id)) -> actor.Spec(Nil, Message(id)) {
-  actor.Spec(
-    init: fn() { actor.Ready(Nil, process.new_selector()) },
-    init_timeout: 10,
-    loop: fn(msg: Message(id), _state: Nil) {
-      case msg {
-        QueryNativeBalance(_address, subject) -> process.send(subject, 69_420)
-        ViewCallContract(_contract_id, _function_name, _data, subject) ->
-          process.send(
-            subject,
-            "Hi from "
-              <> builder.blockchain_name
-              <> ".\nMy RPC URL is "
-              <> uri.to_string(builder.rpc_url),
-          )
-      }
-      actor.continue(Nil)
-    },
+pub fn to_actors(
+  builder: Builder,
+) -> #(actor.Spec(Nil, Message), Dict(String, actor.Spec(Nil, AccountMessage))) {
+  let blockchain_actor =
+    actor.Spec(
+      init: fn() { actor.Ready(Nil, process.new_selector()) },
+      init_timeout: 10,
+      loop: fn(msg: Message, _state: Nil) {
+        case msg {
+          QueryNativeBalance(_address, subject) ->
+            process.send(subject, Ok(69_420))
+          ViewCallContract(contract, function_name, data, subject) -> {
+            let assert Ok(function) = eth.get_function(contract, function_name)
+            let response =
+              eth.eth_call(contract, function, data, builder.rpc_url)
+            process.send(subject, response)
+          }
+        }
+        actor.continue(Nil)
+      },
+    )
+  let accounts_actors = todo
+  #(blockchain_actor, accounts_actors)
+}
+
+fn query_smart_contract(
+  blockchain_subject: Subject(Message),
+  contract: SmartContract,
+  function_name: String,
+  data: BitArray,
+) -> Result(Int) {
+  let subject: Subject(Result(String)) = process.new_subject()
+  process.send(
+    blockchain_subject,
+    ViewCallContract(contract, function_name, data, subject),
   )
+  use result <- result.try(
+    process.receive(subject, 10_000)
+    |> result.try_recover(fn(_) {
+      snag.error("blockchain subject failed to respond")
+    }),
+  )
+  use r <- result.try(result)
+  let assert Ok(balance) = int.base_parse(r, 16)
+  Ok(balance)
 }
 
-pub fn new_account(
+pub fn add_asset(
+  builder builder: Builder,
+  asset_name name: String,
   asset asset: Asset,
-  address address: String,
-) -> Result(Account) {
-  use addr <- result.try(eth.address_from_string(address))
-  Ok(Account(asset, addr))
+) -> Builder {
+  Builder(..builder, assets: dict.insert(builder.assets, name, asset))
+}
+
+pub fn add_account(
+  asset asset: Asset,
+  id id: String,
+  address address: Address,
+) -> Asset {
+  case asset {
+    ERC20(accounts, contract) ->
+      ERC20(dict.insert(accounts, id, Account(address)), contract)
+    ERC721(accounts, contract) ->
+      ERC721(dict.insert(accounts, id, Account(address)), contract)
+    Native(accounts) -> Native(dict.insert(accounts, id, Account(address)))
+  }
 }
 
 pub fn new_native_asset() -> Asset {
-  Native
+  Native(dict.new())
 }
 
 pub fn new_erc20_asset(contract_address at: String) -> Result(Asset) {
   use addr <- result.map(eth.address_from_string(at))
   let contract = erc20.new(addr)
-  ERC20(contract)
+  ERC20(dict.new(), contract)
 }
 
 pub fn new_erc721_asset(contract_address at: String) -> Result(Asset) {
   use addr <- result.map(eth.address_from_string(at))
   let contract = erc721.new(addr)
-  ERC721(contract)
+  ERC721(dict.new(), contract)
 }

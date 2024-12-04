@@ -13,7 +13,7 @@ pub type Group {
 
 pub fn start() -> #(
   erlsup.Supervisor,
-  Subject(chip.Message(evm.Message(String), Group)),
+  Subject(chip.Message(evm.Message, Group)),
 ) {
   let blockchain_name = "Ethereum Mainnet"
   let assert Ok(rpc_url) = uri.parse("https://rpc.ankr.com/eth")
