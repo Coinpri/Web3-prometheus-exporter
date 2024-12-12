@@ -1,35 +1,27 @@
-import eth_crypto/eth.{type Address, type SmartContract}
-import glaml
+import eth_crypto/eth.{type Address}
 import gleam/dict.{type Dict}
-import gleam/erlang/process.{type Subject}
+import gleam/erlang/process
 import gleam/int
-import gleam/io
 import gleam/otp/actor
 import gleam/result
 import gleam/string
 import gleam/uri.{type Uri}
 import snag.{type Result}
 import web3_prometheus_exporter/targets/evm/account
-import web3_prometheus_exporter/util/glaml as glaml_util
 
+import web3_prometheus_exporter/blockchain.{type Message, QueryBalance}
 import web3_prometheus_exporter/targets/evm/asset.{type Asset}
 
 pub opaque type Builder {
-  Builder(blockchain_name: String, rpc_url: Uri, assets: Dict(String, Asset))
-}
-
-pub type Message {
-  QueryBalance(
-    asset_id: String,
-    account_id: String,
-    caller_subject: Subject(Result(Int)),
-  )
+  Builder(rpc_url: Uri, assets: Dict(String, Asset))
 }
 
 pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
   actor.Spec(
-    init: fn() { actor.Ready(Nil, process.new_selector()) },
-    // todo: self-register to chip registry on init
+    init: fn() {
+      process.self()
+      actor.Ready(Nil, process.new_selector())
+    },
     init_timeout: 10,
     loop: fn(msg: Message, _state: Nil) {
       case msg {
@@ -59,6 +51,62 @@ pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
             }
           }
           process.send(caller_subject, ret)
+        }
+
+        blockchain.GetAssets(caller_subject) -> {
+          let assets =
+            dict.fold(builder.assets, [], fn(assets, id, asset) {
+              let #(kind, details) = case asset {
+                asset.ERC20(_, contract) -> #(
+                  "ERC20",
+                  dict.from_list([
+                    #(
+                      "contract address",
+                      contract
+                        |> asset.get_smart_contract
+                        |> eth.get_contract_address
+                        |> eth.address_to_string,
+                    ),
+                  ]),
+                )
+                asset.ERC721(_, contract) -> #(
+                  "ERC721",
+                  dict.from_list([
+                    #(
+                      "contract address",
+                      contract
+                        |> asset.get_smart_contract
+                        |> eth.get_contract_address
+                        |> eth.address_to_string,
+                    ),
+                  ]),
+                )
+                asset.Native(_) -> #("Native", dict.new())
+              }
+              [blockchain.Asset(id, kind, details), ..assets]
+            })
+          process.send(caller_subject, assets)
+        }
+        blockchain.GetAccounts(asset_id, caller_subject) -> {
+          let r = {
+            use asset <- result.map(
+              dict.get(builder.assets, asset_id)
+              |> result.try_recover(fn(_) {
+                snag.error("did not find asset id " <> asset_id)
+              }),
+            )
+            dict.fold(asset.accounts, [], fn(accounts, account_id, account) {
+              [
+                blockchain.Account(
+                  account_id,
+                  account.get_address(account) |> eth.address_to_string,
+                  dict.new(),
+                ),
+                ..accounts
+              ]
+            })
+          }
+          process.send(caller_subject, r)
         }
       }
       actor.continue(Nil)
@@ -128,58 +176,9 @@ fn parse_erc721_response(response: eth.RpcResponse) -> Result(Int) {
   }
 }
 
-pub fn new(
-  blockchain_name blockchain_name: String,
-  rpc_url rpc_url: Uri,
-) -> Builder {
-  Builder(blockchain_name, rpc_url, dict.new())
+pub fn new(rpc_url rpc_url: Uri) -> Builder {
+  Builder(rpc_url, dict.new())
 }
-
-pub fn from_yaml(node: glaml.DocNode) -> Result(Builder) {
-  use name_node <- result.try(
-    glaml.sugar(node, "name")
-    |> result.try_recover(fn(_) {
-      snag.error("could not find yaml node \"name\"")
-    }),
-  )
-  use rpc_url_node <- result.try(
-    glaml.sugar(node, "rpc_url")
-    |> result.try_recover(fn(_) {
-      snag.error("could not find yaml node \"rpc_url\"")
-    }),
-  )
-
-  use name <- result.try(glaml_util.glaml_node_to_string(name_node))
-  use rpc_url_string <- result.try(glaml_util.glaml_node_to_string(rpc_url_node))
-
-  use rpc_url <- result.try(
-    uri.parse(rpc_url_string)
-    |> result.try_recover(fn(_) { snag.error("rpc url could not be parsed") }),
-  )
-  Ok(Builder(name, rpc_url, dict.new()))
-}
-
-// fn query_smart_contract(
-//   blockchain_subject: Subject(Message),
-//   contract: SmartContract,
-//   function_name: String,
-//   data: BitArray,
-// ) -> Result(Int) {
-//   let subject: Subject(Result(String)) = process.new_subject()
-//   process.send(
-//     blockchain_subject,
-//     ViewCallContract(contract, function_name, data, subject),
-//   )
-//   use result <- result.try(
-//     process.receive(subject, 10_000)
-//     |> result.try_recover(fn(_) {
-//       snag.error("blockchain subject failed to respond")
-//     }),
-//   )
-//   use r <- result.try(result)
-//   let assert Ok(balance) = int.base_parse(r, 16)
-//   Ok(balance)
-// }
 
 pub fn add_asset(
   builder builder: Builder,

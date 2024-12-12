@@ -1,9 +1,12 @@
 import eth_crypto/eth
+import gleam/dict
 import gleam/io
+import gleam/list
 import snag
+import web3_prometheus_exporter/blockchain
 import web3_prometheus_exporter/targets/evm/account
 import web3_prometheus_exporter/targets/evm/asset
-import web3_prometheus_exporter/targets/evm/blockchain
+import web3_prometheus_exporter/targets/evm/blockchain as evm_blockchain
 
 import chip
 import gleam/erlang/process
@@ -49,13 +52,13 @@ pub fn evm_test() {
     |> asset.add_account(account_non_0, "address 1")
 
   let blockchain_builder =
-    blockchain.new(blockchain_name, rpc_url)
-    |> blockchain.add_asset(native, "Ether")
-    |> blockchain.add_asset(erc20, "0x0")
-    |> blockchain.add_asset(erc721, "swEXIT")
-  let blockchain_actor = blockchain.to_actor(blockchain_builder)
+    evm_blockchain.new(rpc_url)
+    |> evm_blockchain.add_asset(native, "Ether")
+    |> evm_blockchain.add_asset(erc20, "0x0")
+    |> evm_blockchain.add_asset(erc721, "swEXIT")
+  let blockchain_actor = evm_blockchain.to_actor(blockchain_builder)
 
-  let assert Ok(sup) =
+  let assert Ok(_sup) =
     erlsup.new(erlsup.OneForOne)
     |> erlsup.add({
       erlsup.worker_child(blockchain_name, fn() {
@@ -84,7 +87,7 @@ pub fn evm_test() {
     |> should.be_ok
     |> should.be_ok
 
-  should.be_true(addr_0_balance > { 13_431_000_000_000_000_000_000 })
+  should.be_true(addr_0_balance > { 13_433_191_104_394_091_468_880 })
 
   let addr_0_balance =
     process.try_call(
@@ -123,4 +126,105 @@ pub fn evm_test() {
     |> should.be_ok
 
   should.be_true(addr_1_balance == 0)
+}
+
+pub fn evm_otp_test() {
+  let registry = chip.start(chip.Unnamed) |> should.be_ok
+
+  let account =
+    account.new(
+      eth.address_from_string("0x0000000000000000000000000000000000000000")
+      |> should.be_ok,
+    )
+  let native = asset.new_native() |> asset.add_account(account, "address 0")
+
+  let ethereum_actor =
+    evm_blockchain.new("https://rpc.ankr.com/eth" |> uri.parse |> should.be_ok)
+    |> evm_blockchain.add_asset(native, "Ether")
+    |> evm_blockchain.to_actor
+
+  let arbitrum_actor =
+    evm_blockchain.new(
+      "https://arb1.arbitrum.io/rpc" |> uri.parse |> should.be_ok,
+    )
+    |> evm_blockchain.add_asset(native, "Ether")
+    |> evm_blockchain.to_actor
+
+  let ethereum_supervisor =
+    blockchain.actor_to_child_builder(
+      ethereum_actor,
+      "Ethereum Mainnet",
+      registry,
+    )
+
+  let arbitrum_supervisor =
+    blockchain.actor_to_child_builder(arbitrum_actor, "Arbitrum One", registry)
+
+  let _top_supervisor =
+    erlsup.new(erlsup.OneForOne)
+    |> erlsup.add(ethereum_supervisor)
+    |> erlsup.add(arbitrum_supervisor)
+    |> erlsup.start_link
+    |> should.be_ok
+
+  let assert [ethereum_supervisor_subject] =
+    chip.members(registry, "Ethereum Mainnet", 10)
+  let assert [arbitrum_supervisor_subject] =
+    chip.members(registry, "Arbitrum One", 10)
+
+  process.try_call(
+    ethereum_supervisor_subject,
+    blockchain.QueryBalance("Ether", "address 0", _),
+    1000,
+  )
+  |> should.be_ok
+  |> should.be_ok
+  |> fn(compare_with) { compare_with >= 13_433_191_104_394_091_468_880 }
+  |> should.be_true
+
+  process.try_call(
+    arbitrum_supervisor_subject,
+    blockchain.QueryBalance("Ether", "address 0", _),
+    1000,
+  )
+  |> should.be_ok
+  |> should.be_ok
+  |> fn(compare_with) { compare_with >= 21_007_073_506_420_136_152 }
+  |> should.be_true
+
+  process.try_call(ethereum_supervisor_subject, blockchain.GetAssets(_), 10)
+  |> should.be_ok
+  |> should.equal([blockchain.Asset("Ether", "Native", dict.new())])
+  process.try_call(arbitrum_supervisor_subject, blockchain.GetAssets(_), 10)
+  |> should.be_ok
+  |> should.equal([blockchain.Asset("Ether", "Native", dict.new())])
+
+  process.try_call(
+    ethereum_supervisor_subject,
+    blockchain.GetAccounts("Ether", _),
+    10,
+  )
+  |> should.be_ok
+  |> should.be_ok
+  |> should.equal([
+    blockchain.Account(
+      "address 0",
+      "0x0000000000000000000000000000000000000000",
+      dict.new(),
+    ),
+  ])
+  process.try_call(
+    arbitrum_supervisor_subject,
+    blockchain.GetAccounts("Ether", _),
+    10,
+  )
+  |> should.be_ok
+  |> should.be_ok
+  |> should.equal([
+    blockchain.Account(
+      "address 0",
+      "0x0000000000000000000000000000000000000000",
+      dict.new(),
+    ),
+  ])
 }
