@@ -1,34 +1,46 @@
 import eth_crypto/eth.{type Address}
+import gleam/option.{type Option, None, Some}
 
 pub opaque type Account {
-  Account(address: Address, request_timeout: Int, request_interval: Int)
+  Account(address: Address, timeout: Option(Int), interval: Option(Int))
 }
-
-const default_request_timeout = 10_000
-
-const default_request_interval = 10_000
 
 pub fn new(address address: Address) -> Account {
-  Account(address, default_request_timeout, default_request_interval)
+  Account(address, None, None)
 }
 
-pub fn timeout(account account: Account, timeout_ms timeout_ms: Int) -> Account {
-  case timeout_ms > 0 {
-    False -> account
-    True -> Account(..account, request_timeout: timeout_ms)
+pub fn timeout(
+  account account: Account,
+  timeout timeout: Option(Int),
+) -> Account {
+  let new_timeout = case timeout {
+    None -> None
+    Some(timeout_ms) if timeout_ms > 0 -> Some(timeout_ms)
+    Some(_) -> account.timeout
   }
+  Account(..account, timeout: new_timeout)
 }
 
 pub fn interval(
   account account: Account,
-  interval_ms interval_ms: Int,
+  interval interval: Option(Int),
 ) -> Account {
-  case interval_ms > 0 {
-    False -> account
-    True -> Account(..account, request_interval: interval_ms)
+  let new_interval = case interval {
+    None -> None
+    Some(interval_ms) if interval_ms > 0 -> Some(interval_ms)
+    Some(_) -> account.interval
   }
+  Account(..account, interval: new_interval)
 }
 
 pub fn get_address(account account: Account) -> Address {
   account.address
+}
+
+pub fn get_interval(account account: Account) -> Option(Int) {
+  account.interval
+}
+
+pub fn get_timeout(account account: Account) -> Option(Int) {
+  account.timeout
 }

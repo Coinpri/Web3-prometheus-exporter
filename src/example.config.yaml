@@ -1,0 +1,26 @@
+blockchains:
+- id: "Ethereum Mainnet"
+  type: "evm"
+  rpc_url: "https://rpc.ankr.com/eth"
+  interval: 60
+  timeout: 15
+  assets:
+  - id: "Ether"
+    type: "Native"
+    interval: 30
+    timeout: 10
+    accounts:
+    - id: "address 0"
+      address: "0x0000000000000000000000000000000000000000"
+      interval: 15
+      timeout: 5
+  - id: "USDT"
+    type: "erc20"
+    interval: 30
+    timeout: 10
+    contract_address: "0xB8fda5AEe55120247F16225feFf266dfdB381D4C"
+    accounts:
+    - id: "address 0"
+      address: "0x0000000000000000000000000000000000000000"
+      interval: 15
+      timeout: 5

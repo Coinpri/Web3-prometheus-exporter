@@ -1,34 +1,15 @@
-import chip
-import eth_crypto/eth
-import gleam/erlang/process
-import gleam/io
-import gleam/option.{None}
+import web3_prometheus_exporter/blockchain
+import web3_prometheus_exporter/prometheus
+import web3_prometheus_exporter/targets/evm/blockchain as evm_blockchain
 
-// import web3_prometheus_exporter/blockchain/evm
-import web3_prometheus_exporter/supervisor
+const address = #("0x0000000000000000000000000000000000000000", "address 0")
+
+const ether = "Ether"
+
+const ethereum = #("Ethereum Mainnet", "https://rpc.ankr.com/eth")
+
+const arbitrum = #("Arbitrum One", "https://arb1.arbitrum.io/rpc")
 
 pub fn main() {
   todo
-  // let #(sup, reg) = supervisor.start()
-  // let subject = process.new_subject()
-  // let subject2 = process.new_subject()
-  // let assert [blockchain_subject] =
-  //   chip.members(reg, supervisor.Group("Ethereum Mainnet", None), 50)
-  // let assert Ok(address) =
-  //   eth.address_from_string("0xD3a22590f8243f8E83Ac230D1842C9Af0404C4A1")
-
-  // process.send(blockchain_subject, evm.QueryNativeBalance(address, subject))
-  // let assert Ok(value) = process.receive(subject, 10)
-  // io.debug(value)
-  // process.send(
-  //   blockchain_subject,
-  //   evm.ViewCallContract(
-  //     "doesnt matter",
-  //     "doesnt matter",
-  //     "doesnt matter",
-  //     subject2,
-  //   ),
-  // )
-  // let assert Ok(value) = process.receive(subject2, 10)
-  // io.println(value)
 }

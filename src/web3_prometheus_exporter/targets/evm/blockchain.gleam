@@ -31,7 +31,7 @@ pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
             use account <- result.try(asset.get_account(asset, account_id))
             let address = account.get_address(account)
             case asset {
-              asset.ERC20(_, asset_contract) -> {
+              asset.ERC20(_, _, _, asset_contract) -> {
                 use rpc_response <- result.try(get_balance_from_contract_asset(
                   builder.rpc_url,
                   asset_contract,
@@ -39,7 +39,7 @@ pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
                 ))
                 parse_erc20_response(rpc_response)
               }
-              asset.ERC721(_, asset_contract) -> {
+              asset.ERC721(_, _, _, asset_contract) -> {
                 use rpc_response <- result.try(get_balance_from_contract_asset(
                   builder.rpc_url,
                   asset_contract,
@@ -47,7 +47,8 @@ pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
                 ))
                 parse_erc721_response(rpc_response)
               }
-              asset.Native(_) -> eth.eth_get_balance(builder.rpc_url, address)
+              asset.Native(_, _, _) ->
+                eth.eth_get_balance(builder.rpc_url, address)
             }
           }
           process.send(caller_subject, ret)
@@ -56,8 +57,8 @@ pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
         blockchain.GetAssets(caller_subject) -> {
           let assets =
             dict.fold(builder.assets, [], fn(assets, id, asset) {
-              let #(kind, details) = case asset {
-                asset.ERC20(_, contract) -> #(
+              let #(kind, details, interval, timeout) = case asset {
+                asset.ERC20(_, interval, timeout, contract) -> #(
                   "ERC20",
                   dict.from_list([
                     #(
@@ -68,8 +69,10 @@ pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
                         |> eth.address_to_string,
                     ),
                   ]),
+                  interval,
+                  timeout,
                 )
-                asset.ERC721(_, contract) -> #(
+                asset.ERC721(_, interval, timeout, contract) -> #(
                   "ERC721",
                   dict.from_list([
                     #(
@@ -80,10 +83,17 @@ pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
                         |> eth.address_to_string,
                     ),
                   ]),
+                  interval,
+                  timeout,
                 )
-                asset.Native(_) -> #("Native", dict.new())
+                asset.Native(_, interval, timeout) -> #(
+                  "Native",
+                  dict.new(),
+                  interval,
+                  timeout,
+                )
               }
-              [blockchain.Asset(id, kind, details), ..assets]
+              [blockchain.Asset(id, kind, details, interval, timeout), ..assets]
             })
           process.send(caller_subject, assets)
         }
@@ -101,6 +111,8 @@ pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
                   account_id,
                   account.get_address(account) |> eth.address_to_string,
                   dict.new(),
+                  account.get_interval(account),
+                  account.get_timeout(account),
                 ),
                 ..accounts
               ]
@@ -196,4 +208,14 @@ pub fn get_asset(
   |> result.try_recover(fn(_) {
     snag.error("failed to find asset " <> asset_id)
   })
+}
+
+pub fn add_assets(
+  builder builder: Builder,
+  assets assets: Dict(String, Asset),
+) -> Builder {
+  Builder(
+    ..builder,
+    assets: dict.combine(builder.assets, assets, fn(_, new) { new }),
+  )
 }

@@ -2,8 +2,10 @@ import eth_crypto/eth
 import gleam/dict
 import gleam/io
 import gleam/list
+import gleam/option.{None, Some}
 import snag
 import web3_prometheus_exporter/blockchain
+import web3_prometheus_exporter/prometheus
 import web3_prometheus_exporter/targets/evm/account
 import web3_prometheus_exporter/targets/evm/asset
 import web3_prometheus_exporter/targets/evm/blockchain as evm_blockchain
@@ -130,6 +132,7 @@ pub fn evm_test() {
 
 pub fn evm_otp_test() {
   let registry = chip.start(chip.Unnamed) |> should.be_ok
+  let prometheus_subject = process.new_subject()
 
   let account =
     account.new(
@@ -154,11 +157,21 @@ pub fn evm_otp_test() {
     blockchain.actor_to_child_builder(
       ethereum_actor,
       "Ethereum Mainnet",
+      prometheus_subject,
       registry,
+      Some(1000),
+      Some(500),
     )
 
   let arbitrum_supervisor =
-    blockchain.actor_to_child_builder(arbitrum_actor, "Arbitrum One", registry)
+    blockchain.actor_to_child_builder(
+      arbitrum_actor,
+      "Arbitrum One",
+      prometheus_subject,
+      registry,
+      Some(1000),
+      Some(500),
+    )
 
   let _top_supervisor =
     erlsup.new(erlsup.OneForOne)
@@ -194,10 +207,10 @@ pub fn evm_otp_test() {
 
   process.try_call(ethereum_supervisor_subject, blockchain.GetAssets(_), 10)
   |> should.be_ok
-  |> should.equal([blockchain.Asset("Ether", "Native", dict.new())])
+  |> should.equal([blockchain.Asset("Ether", "Native", dict.new(), None, None)])
   process.try_call(arbitrum_supervisor_subject, blockchain.GetAssets(_), 10)
   |> should.be_ok
-  |> should.equal([blockchain.Asset("Ether", "Native", dict.new())])
+  |> should.equal([blockchain.Asset("Ether", "Native", dict.new(), None, None)])
 
   process.try_call(
     ethereum_supervisor_subject,
@@ -211,6 +224,8 @@ pub fn evm_otp_test() {
       "address 0",
       "0x0000000000000000000000000000000000000000",
       dict.new(),
+      None,
+      None,
     ),
   ])
   process.try_call(
@@ -225,6 +240,39 @@ pub fn evm_otp_test() {
       "address 0",
       "0x0000000000000000000000000000000000000000",
       dict.new(),
+      None,
+      None,
     ),
   ])
+  let prometheus.UpdateBalance(new_balance_ether, labels_ether) =
+    process.receive(prometheus_subject, 1500) |> should.be_ok
+  let prometheus.UpdateBalance(new_balance_arbitrum, labels_arbitrum) =
+    process.receive(prometheus_subject, 1500) |> should.be_ok
+
+  should.be_true(new_balance_ether >= 13_434_239_746_187_261_108_342)
+  should.equal(
+    labels_ether,
+    dict.from_list([
+      #("account", "address 0"),
+      #("address", "0x0000000000000000000000000000000000000000"),
+      #("asset", "Ether"),
+    ]),
+  )
+
+  should.be_true(new_balance_arbitrum >= 21_007_078_971_312_777_512)
+  should.equal(
+    labels_arbitrum,
+    dict.from_list([
+      #("account", "address 0"),
+      #("address", "0x0000000000000000000000000000000000000000"),
+      #("asset", "Ether"),
+    ]),
+  )
+  let assert Error(_) =
+    process.receive(prometheus_subject, 1500)
+    |> result.map(fn(_) {
+      snag.error(
+        "if this fails (unexpectedly returns an Ok value), try the test again. It's possible the ethereum or arbitrum balance for address 0 was changed in between the two runs (1 second window)",
+      )
+    })
 }
