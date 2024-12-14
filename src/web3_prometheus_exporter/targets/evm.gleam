@@ -23,6 +23,12 @@ import web3_prometheus_exporter/targets/evm/blockchain as evm_blockchain
 // go through the rest of the code and comment it as well
 // consider writing some documentation even (although might be a bit early for that)
 
+/// Returns an entire otp `erlang_supervisor.ChildBuilder` from the blockchain yaml
+/// node (and prometheus subject, and chip registry). The `ChildBuilder` can then
+/// be added to a `Builder` with `erlang_supervisor.add`, or started on a running
+/// supervisor with `erlang_supervisor.start_child`.
+/// If using a `otp/supervisor` instead, a different function will be needed.
+/// See `example.config.yaml` for config example.
 pub fn build_blockchain_child_process(
   config config: glaml.DocNode,
   prometheus_subject subject: Subject(prometheus.Message),
@@ -31,11 +37,12 @@ pub fn build_blockchain_child_process(
     String,
   ),
 ) -> Result(erlsup.ChildBuilder) {
+  // extracting glaml nodes
   use blockchain_id_node <- try_parse(config, "id")
   use rpc_url_node <- try_parse(config, "rpc_url")
   use assets_node <- try_parse(config, "assets")
 
-  // Checking types for all the fields
+  // parsing glaml nodes (ensuring types, DocNodeStr, DocNodeInt etc...)
   use blockchain_id <- result.try(case blockchain_id_node {
     glaml.DocNodeStr(blockchain_id) -> Ok(blockchain_id)
     _ -> snag.error("blockchain id field should be a string")
@@ -55,13 +62,18 @@ pub fn build_blockchain_child_process(
     _ -> snag.error("blockchain field \"assets\" should be a list")
   })
 
+  // extracting and parsing optional `interval` and `timeout` values
   let #(optional_blockchain_interval, optional_blockchain_timeout) =
     extract_optional_times(config)
 
+  // extracting and parsing `assets`
   use assets <- result.map(
     parse_assets(assets) |> snag.context("parsing assets"),
   )
 
+  // creating new `evm_blockchain` builder, adding assets to it,
+  // building an `otp/actor` from it,
+  // and converting that actor to a `erlang_supervisor.ChildBuilder`
   evm_blockchain.new(rpc_url)
   |> evm_blockchain.add_assets(assets)
   |> evm_blockchain.to_actor
@@ -74,6 +86,19 @@ pub fn build_blockchain_child_process(
   )
 }
 
+/// Extract a dict of assets from a list of `glaml.DocNode`
+/// Example:
+/// ```
+/// ...
+///   - id: "my asset"
+///     type: "erc20"
+///     contract_address: "0xFEDC...21"
+///     accounts:
+///       ...
+/// -> #("my asset", "0x123...EF" |> to_address |> to_erc20_contract |> to_asset)
+/// |> dict.from_list
+/// ```
+/// Returns an `Error` if any of the assets cannot be parsed.
 fn parse_assets(
   assets: List(glaml.DocNode),
 ) -> Result(Dict(String, asset.Asset)) {
@@ -82,10 +107,12 @@ fn parse_assets(
       use asset_node, index <- list.index_map(assets)
 
       {
+        // extract asset fields
         use asset_id_node <- try_parse(asset_node, "id")
         use asset_type_node <- try_parse(asset_node, "type")
         use asset_accounts_node <- try_parse(asset_node, "accounts")
 
+        // parse asset fields (check types: DocNodeStr, DocNodeSeq etc...)
         use asset_id <- result.try(case asset_id_node {
           glaml.DocNodeStr(asset_id) -> Ok(asset_id)
           _ -> snag.error("blockchain field \"id\" should be a string")
@@ -96,15 +123,23 @@ fn parse_assets(
         })
         use asset_accounts <- result.try(case asset_accounts_node {
           glaml.DocNodeSeq(asset_accounts) -> Ok(asset_accounts)
-          _ -> snag.error("blockchain field \"id\" should be a list")
+          _ -> snag.error("blockchain field \"accounts\" should be a list")
         })
 
+        // extracting and parsing optional `interval` and `timeout` values
         let #(optional_asset_interval, optional_asset_timeout) =
           extract_optional_times(asset_node)
 
+        // parsing accounts
         use accounts <- result.try(
           parse_accounts(asset_accounts) |> snag.context("parsing accounts"),
         )
+
+        // parsing the asset's `type` field.
+        // correct values (case-insensitive):
+        // - "native"
+        // - "erc20" with `contract_address` field
+        // - "erc721" with `contract_address` field
         use asset <- result.try(case string.lowercase(asset_type_string) {
           "native" -> Ok(asset.new_native())
           "erc20" ->
@@ -115,6 +150,9 @@ fn parse_assets(
             |> snag.context("attempting to parse erc721 asset")
           other -> snag.error("unrecognized evm asset type \"" <> other <> "\"")
         })
+
+        // Returning 2-tuple to build the final Dict from
+        // #("asset id", newly_built_asset)
         Ok(#(
           asset_id,
           asset.add_accounts(
@@ -127,11 +165,22 @@ fn parse_assets(
       }
       |> snag.context("parsing asset #" <> int.to_string(index))
     }
+    // The previous block returns a `List(Result(#(String, asset.Asset)))`
+    // Ensure all items in the list are Ok
     |> result.all
-  use assets <- result.map(assets_result)
-  dict.from_list(assets)
+  result.map(assets_result, fn(assets) { dict.from_list(assets) })
 }
 
+/// Extract a dict of accounts from a list `glaml.DocNode`
+/// Example:
+/// ```
+/// ...
+///     - id: "my account"
+///       address: "0x123456789...EF"
+/// -> #("my account", "0x123...EF" |> to_address |> to_account)
+/// |> dict.from_list
+/// ```
+/// Returns an `Error` if any of the accounts cannot be parsed.
 fn parse_accounts(
   accounts: List(glaml.DocNode),
 ) -> Result(Dict(String, account.Account)) {
@@ -140,9 +189,11 @@ fn parse_accounts(
       use account_node, index <- list.index_map(accounts)
 
       {
+        // extract account fields
         use account_id_node <- try_parse(account_node, "id")
         use account_address_node <- try_parse(account_node, "address")
 
+        // check account field types (glaml.DocNodeStr)
         use account_id <- result.try(case account_id_node {
           glaml.DocNodeStr(account_id) -> Ok(account_id)
           _ -> snag.error("blockchain field \"id\" should be a string")
@@ -152,12 +203,17 @@ fn parse_accounts(
           _ -> snag.error("blockchain field \"address\" should be a string")
         })
 
+        // extract and parse optional `interval` and `timeout` values
         let #(optional_account_interval, optional_account_timeout) =
           extract_optional_times(account_node)
 
+        // parse the given `address` into an EVM address object
         use account_address <- result.try(eth.address_from_string(
           account_address_string,
         ))
+
+        // Returning 2-tuple to build the final Dict from
+        // #("account id", newly_built_account)
         Ok(#(
           account_id,
           account.new(account_address)
@@ -167,11 +223,14 @@ fn parse_accounts(
       }
       |> snag.context("parsing account #" <> int.to_string(index))
     }
+    // The previous block returns a `List(Result(#(String, account.Account)))`
+    // Ensure all items in the list are Ok
     |> result.all
-  use accounts <- result.map(account_results)
-  dict.from_list(accounts)
+  result.map(account_results, fn(accounts) { dict.from_list(accounts) })
 }
 
+/// Helper function to extract the option `interval` and `timeout`
+/// ms fields that can be found in blockchain, asset, or account configs.
 fn extract_optional_times(node: glaml.DocNode) -> #(Option(Int), Option(Int)) {
   let interval = case glaml.sugar(node, "interval") {
     Ok(glaml.DocNodeInt(interval)) -> Some(interval)
@@ -184,6 +243,8 @@ fn extract_optional_times(node: glaml.DocNode) -> #(Option(Int), Option(Int)) {
   #(interval, timeout)
 }
 
+/// Attempts to `glaml.sugar` a node name to a `glaml.DocNode`,
+/// Running the `apply` function if Ok, otherwise returning the error
 fn try_parse(
   node: glaml.DocNode,
   field: String,
@@ -197,6 +258,9 @@ fn try_parse(
   result.try(r, apply)
 }
 
+/// Basically just extracts the non-standard `contract_address` field
+/// from an asset glaml node. Returns an `Error` if not found.
+/// Builds a new `asset.ERC20` from the found smart contract address
 fn parse_erc20_asset(asset_node: glaml.DocNode) -> Result(asset.Asset) {
   use contract_address <- result.try(case
     glaml.sugar(asset_node, "contract_address")
@@ -207,6 +271,9 @@ fn parse_erc20_asset(asset_node: glaml.DocNode) -> Result(asset.Asset) {
   asset.new_erc20(contract_address)
 }
 
+/// Basically just extracts the non-standard `contract_address` field
+/// from an asset glaml node. Returns an `Error` if not found.
+/// Builds a new `asset.ERC721` from the found smart contract address
 fn parse_erc721_asset(asset_node: glaml.DocNode) -> Result(asset.Asset) {
   use contract_address <- result.try(case
     glaml.sugar(asset_node, "contract_address")
