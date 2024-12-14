@@ -1,14 +1,19 @@
 import eth_crypto/eth.{type Address}
 import gleam/option.{type Option, None, Some}
 
+/// An account is simply an EVM address with optional timers
+/// which determine the frequency and tolerance of querying
+/// blockchain data for that account.
 pub opaque type Account {
   Account(address: Address, timeout: Option(Int), interval: Option(Int))
 }
 
+/// Return a new EVM account from an EVM address.
 pub fn new(address address: Address) -> Account {
   Account(address, None, None)
 }
 
+/// Set an account's optional timeout
 pub fn timeout(
   account account: Account,
   timeout timeout: Option(Int),
@@ -21,6 +26,7 @@ pub fn timeout(
   Account(..account, timeout: new_timeout)
 }
 
+/// Set an account's optional interval
 pub fn interval(
   account account: Account,
   interval interval: Option(Int),
