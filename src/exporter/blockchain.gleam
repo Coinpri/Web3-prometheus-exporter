@@ -1,4 +1,5 @@
 import chip
+import exporter/prometheus
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Pid, type Subject}
 import gleam/list
@@ -7,7 +8,6 @@ import gleam/otp/actor
 import gleam/otp/erlang_supervisor as erlsup
 import gleam/yielder
 import snag
-import web3_prometheus_exporter/prometheus
 
 /// Generalized message type for blockchain actors.
 pub type Message {
@@ -143,11 +143,13 @@ fn make_timer_loop(
   account_id: String,
   account_address: String,
   account_details: Dict(String, String),
-  timeout_ms: Int,
-  interval_ms: Int,
+  timeout_s: Int,
+  interval_s: Int,
 ) -> fn() -> Result(Pid, Nil) {
   // We have to wrap `process.start` in an `Ok` because it returns a raw Pid,
   // and we need a `Result(Pid, Nil)
+  let interval_ms = interval_s * 1000
+  let timeout_ms = timeout_s * 1000
   fn() {
     Ok(process.start(
       fn() {

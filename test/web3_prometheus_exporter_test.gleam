@@ -1,12 +1,16 @@
 import eth_crypto/eth
+import exporter/blockchain
+import exporter/prometheus
+import exporter/targets/evm
+import exporter/targets/evm/account
+import exporter/targets/evm/asset
+import exporter/targets/evm/blockchain as evm_blockchain
+import glaml
 import gleam/dict
+import gleam/io
 import gleam/option.{None, Some}
 import snag
-import web3_prometheus_exporter/blockchain
-import web3_prometheus_exporter/prometheus
-import web3_prometheus_exporter/targets/evm/account
-import web3_prometheus_exporter/targets/evm/asset
-import web3_prometheus_exporter/targets/evm/blockchain as evm_blockchain
+import web3_prometheus_exporter
 
 import chip
 import gleam/erlang/process
@@ -157,8 +161,8 @@ pub fn evm_otp_test() {
       "Ethereum Mainnet",
       prometheus_subject,
       registry,
-      Some(1000),
-      Some(500),
+      Some(1),
+      Some(1),
     )
 
   let arbitrum_supervisor =
@@ -167,8 +171,8 @@ pub fn evm_otp_test() {
       "Arbitrum One",
       prometheus_subject,
       registry,
-      Some(1000),
-      Some(500),
+      Some(1),
+      Some(1),
     )
 
   let _top_supervisor =
@@ -273,4 +277,43 @@ pub fn evm_otp_test() {
         "if this fails (unexpectedly returns an Ok value), try the test again. It's possible the ethereum or arbitrum balance for address 0 was changed in between the two runs (1 second window)",
       )
     })
+}
+
+pub fn evm_config_test() {
+  let subject = process.new_subject()
+  let registry = chip.start(chip.Named("blockchain")) |> should.be_ok
+  let _supervisor =
+    glaml.parse_file("example.config.yaml")
+    |> should.be_ok
+    |> web3_prometheus_exporter.supervisor_from_config(subject, registry)
+    |> should.be_ok
+
+  let prometheus.UpdateBalance(usdt_addr_0, labels_usdt) =
+    process.receive(subject, 1500) |> should.be_ok
+
+  should.be_true(
+    usdt_addr_0
+    >= 999_999_999_999_999_999_999_999_999_999_000_000_000_000_000_000_000_000_000,
+  )
+
+  should.equal(
+    labels_usdt,
+    dict.from_list([
+      #("account", "address 0"),
+      #("address", "0x0000000000000000000000000000000000000000"),
+      #("asset", "USDT"),
+      #("contract address", "0xB8FDA5AEE55120247F16225FEFF266DFDB381D4C"),
+    ]),
+  )
+  let prometheus.UpdateBalance(ether_addr_0, labels_ether) =
+    process.receive(subject, 1500) |> should.be_ok
+  should.equal(
+    labels_ether,
+    dict.from_list([
+      #("account", "address 0"),
+      #("address", "0x0000000000000000000000000000000000000000"),
+      #("asset", "Ether"),
+    ]),
+  )
+  should.be_true(ether_addr_0 >= 13_434_849_465_095_238_299_139)
 }

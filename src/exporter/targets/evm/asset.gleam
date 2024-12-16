@@ -6,7 +6,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import snag.{type Result}
 
-import web3_prometheus_exporter/targets/evm/account.{type Account}
+import exporter/targets/evm/account.{type Account}
 
 /// EVM-specific token assets.
 /// Native = Ether for Ethereum, Matic for Polygon etc
@@ -131,9 +131,7 @@ pub fn get_account(
   account_id account_id: String,
 ) -> Result(Account) {
   dict.get(asset.accounts, account_id)
-  |> result.try_recover(fn(_) {
-    snag.error("failed to find account " <> account_id)
-  })
+  |> result.replace_error(snag.new("failed to find account " <> account_id))
 }
 
 /// Set asset-level timeout

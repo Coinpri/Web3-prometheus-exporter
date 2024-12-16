@@ -4,7 +4,7 @@ import gleam/option.{type Option, None, Some}
 /// An account is simply an EVM address with optional timers
 /// which determine the frequency and tolerance of querying
 /// blockchain data for that account.
-pub opaque type Account {
+pub type Account {
   Account(address: Address, timeout: Option(Int), interval: Option(Int))
 }
 
@@ -37,16 +37,4 @@ pub fn interval(
     Some(_) -> account.interval
   }
   Account(..account, interval: new_interval)
-}
-
-pub fn get_address(account account: Account) -> Address {
-  account.address
-}
-
-pub fn get_interval(account account: Account) -> Option(Int) {
-  account.interval
-}
-
-pub fn get_timeout(account account: Account) -> Option(Int) {
-  account.timeout
 }

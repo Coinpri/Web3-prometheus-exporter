@@ -1,27 +1,21 @@
 import chip
 import eth_crypto/eth
+import exporter/blockchain
+import exporter/prometheus
+import exporter/targets/evm/account
+import exporter/targets/evm/asset
+import exporter/targets/evm/blockchain as evm_blockchain
+import exporter/util/glaml.{to_seq, to_string} as uglaml
 import glaml
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
 import gleam/otp/erlang_supervisor as erlsup
 import gleam/result
 import gleam/string
 import gleam/uri
 import snag.{type Result}
-import web3_prometheus_exporter/blockchain
-import web3_prometheus_exporter/prometheus
-import web3_prometheus_exporter/targets/evm/account
-import web3_prometheus_exporter/targets/evm/asset
-import web3_prometheus_exporter/targets/evm/blockchain as evm_blockchain
-
-// TODO:
-// write comments for this code
-// write some tests for it
-// go through the rest of the code and comment it as well
-// consider writing some documentation even (although might be a bit early for that)
 
 /// Returns an entire otp `erlang_supervisor.ChildBuilder` from the blockchain yaml
 /// node (and prometheus subject, and chip registry). The `ChildBuilder` can then
@@ -37,53 +31,41 @@ pub fn build_blockchain_child_process(
     String,
   ),
 ) -> Result(erlsup.ChildBuilder) {
-  // extracting glaml nodes
-  use blockchain_id_node <- try_parse(config, "id")
-  use rpc_url_node <- try_parse(config, "rpc_url")
-  use assets_node <- try_parse(config, "assets")
+  {
+    // extracting and parsing glaml nodes
+    use blockchain_id <- uglaml.try_parse(config, "id", to_string)
+    use rpc_url_string <- uglaml.try_parse(config, "rpc_url", to_string)
+    use rpc_url <- result.try(
+      uri.parse(rpc_url_string)
+      |> result.replace_error(snag.new(
+        "failed to parse rpc url \"" <> rpc_url_string <> "\"",
+      )),
+    )
+    use assets <- uglaml.try_parse(config, "assets", to_seq)
 
-  // parsing glaml nodes (ensuring types, DocNodeStr, DocNodeInt etc...)
-  use blockchain_id <- result.try(case blockchain_id_node {
-    glaml.DocNodeStr(blockchain_id) -> Ok(blockchain_id)
-    _ -> snag.error("blockchain id field should be a string")
-  })
-  use rpc_url <- result.try(case rpc_url_node {
-    glaml.DocNodeStr(rpc_url) ->
-      uri.parse(rpc_url)
-      |> result.try_recover(fn(_) {
-        snag.error(
-          "blockchain rpc url field is not a valid url: \"" <> rpc_url <> "\"",
-        )
-      })
-    _ -> snag.error("blockchain rpc url field should be a string")
-  })
-  use assets <- result.try(case assets_node {
-    glaml.DocNodeSeq(asset_nodes) -> Ok(asset_nodes)
-    _ -> snag.error("blockchain field \"assets\" should be a list")
-  })
+    // extracting and parsing optional `interval` and `timeout` values
+    let #(optional_blockchain_interval, optional_blockchain_timeout) =
+      uglaml.extract_optional_times(config)
 
-  // extracting and parsing optional `interval` and `timeout` values
-  let #(optional_blockchain_interval, optional_blockchain_timeout) =
-    extract_optional_times(config)
+    // extracting and parsing `assets`
+    use assets <- result.map(
+      parse_assets(assets) |> snag.context("parsing assets"),
+    )
 
-  // extracting and parsing `assets`
-  use assets <- result.map(
-    parse_assets(assets) |> snag.context("parsing assets"),
-  )
-
-  // creating new `evm_blockchain` builder, adding assets to it,
-  // building an `otp/actor` from it,
-  // and converting that actor to a `erlang_supervisor.ChildBuilder`
-  evm_blockchain.new(rpc_url)
-  |> evm_blockchain.add_assets(assets)
-  |> evm_blockchain.to_actor
-  |> blockchain.actor_to_child_builder(
-    blockchain_id,
-    subject,
-    registry,
-    optional_blockchain_interval,
-    optional_blockchain_timeout,
-  )
+    // creating new `evm_blockchain` builder, adding assets to it,
+    // building an `otp/actor` from it,
+    // and converting that actor to a `erlang_supervisor.ChildBuilder`
+    evm_blockchain.new(rpc_url)
+    |> evm_blockchain.add_assets(assets)
+    |> evm_blockchain.to_actor
+    |> blockchain.actor_to_child_builder(
+      blockchain_id,
+      subject,
+      registry,
+      optional_blockchain_interval,
+      optional_blockchain_timeout,
+    )
+  }
 }
 
 /// Extract a dict of assets from a list of `glaml.DocNode`
@@ -108,27 +90,13 @@ fn parse_assets(
 
       {
         // extract asset fields
-        use asset_id_node <- try_parse(asset_node, "id")
-        use asset_type_node <- try_parse(asset_node, "type")
-        use asset_accounts_node <- try_parse(asset_node, "accounts")
-
-        // parse asset fields (check types: DocNodeStr, DocNodeSeq etc...)
-        use asset_id <- result.try(case asset_id_node {
-          glaml.DocNodeStr(asset_id) -> Ok(asset_id)
-          _ -> snag.error("blockchain field \"id\" should be a string")
-        })
-        use asset_type_string <- result.try(case asset_type_node {
-          glaml.DocNodeStr(asset_type) -> Ok(asset_type)
-          _ -> snag.error("blockchain field \"type\" should be a string")
-        })
-        use asset_accounts <- result.try(case asset_accounts_node {
-          glaml.DocNodeSeq(asset_accounts) -> Ok(asset_accounts)
-          _ -> snag.error("blockchain field \"accounts\" should be a list")
-        })
+        use asset_id <- uglaml.try_parse(asset_node, "id", to_string)
+        use asset_type_string <- uglaml.try_parse(asset_node, "type", to_string)
+        use asset_accounts <- uglaml.try_parse(asset_node, "accounts", to_seq)
 
         // extracting and parsing optional `interval` and `timeout` values
         let #(optional_asset_interval, optional_asset_timeout) =
-          extract_optional_times(asset_node)
+          uglaml.extract_optional_times(asset_node)
 
         // parsing accounts
         use accounts <- result.try(
@@ -190,27 +158,15 @@ fn parse_accounts(
 
       {
         // extract account fields
-        use account_id_node <- try_parse(account_node, "id")
-        use account_address_node <- try_parse(account_node, "address")
-
-        // check account field types (glaml.DocNodeStr)
-        use account_id <- result.try(case account_id_node {
-          glaml.DocNodeStr(account_id) -> Ok(account_id)
-          _ -> snag.error("blockchain field \"id\" should be a string")
-        })
-        use account_address_string <- result.try(case account_address_node {
-          glaml.DocNodeStr(account_address) -> Ok(account_address)
-          _ -> snag.error("blockchain field \"address\" should be a string")
-        })
+        use account_id <- uglaml.try_parse(account_node, "id", to_string)
+        use addr_string <- uglaml.try_parse(account_node, "address", to_string)
 
         // extract and parse optional `interval` and `timeout` values
         let #(optional_account_interval, optional_account_timeout) =
-          extract_optional_times(account_node)
+          uglaml.extract_optional_times(account_node)
 
         // parse the given `address` into an EVM address object
-        use account_address <- result.try(eth.address_from_string(
-          account_address_string,
-        ))
+        use account_address <- result.try(eth.address_from_string(addr_string))
 
         // Returning 2-tuple to build the final Dict from
         // #("account id", newly_built_account)
@@ -227,35 +183,6 @@ fn parse_accounts(
     // Ensure all items in the list are Ok
     |> result.all
   result.map(account_results, fn(accounts) { dict.from_list(accounts) })
-}
-
-/// Helper function to extract the option `interval` and `timeout`
-/// ms fields that can be found in blockchain, asset, or account configs.
-fn extract_optional_times(node: glaml.DocNode) -> #(Option(Int), Option(Int)) {
-  let interval = case glaml.sugar(node, "interval") {
-    Ok(glaml.DocNodeInt(interval)) -> Some(interval)
-    _ -> None
-  }
-  let timeout = case glaml.sugar(node, "timeout") {
-    Ok(glaml.DocNodeInt(timeout)) -> Some(timeout)
-    _ -> None
-  }
-  #(interval, timeout)
-}
-
-/// Attempts to `glaml.sugar` a node name to a `glaml.DocNode`,
-/// Running the `apply` function if Ok, otherwise returning the error
-fn try_parse(
-  node: glaml.DocNode,
-  field: String,
-  apply: fn(glaml.DocNode) -> Result(b),
-) -> Result(b) {
-  let r =
-    glaml.sugar(node, field)
-    |> result.try_recover(fn(_) {
-      snag.error("could not parse field \"" <> field <> "\"")
-    })
-  result.try(r, apply)
 }
 
 /// Basically just extracts the non-standard `contract_address` field

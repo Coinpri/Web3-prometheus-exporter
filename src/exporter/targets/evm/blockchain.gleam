@@ -1,4 +1,5 @@
 import eth_crypto/eth.{type Address}
+import exporter/targets/evm/account
 import gleam/dict.{type Dict}
 import gleam/erlang/process
 import gleam/int
@@ -7,12 +8,9 @@ import gleam/result
 import gleam/string
 import gleam/uri.{type Uri}
 import snag.{type Result}
-import web3_prometheus_exporter/targets/evm/account
 
-import web3_prometheus_exporter/blockchain.{
-  type Message, GetAccounts, GetAssets, QueryBalance,
-}
-import web3_prometheus_exporter/targets/evm/asset.{type Asset}
+import exporter/blockchain.{type Message, GetAccounts, GetAssets, QueryBalance}
+import exporter/targets/evm/asset.{type Asset}
 
 /// Builder pattern. Use the builder to create a blockchain actor
 /// with `to_actor`
@@ -40,9 +38,7 @@ pub fn get_asset(
   asset_id asset_id: String,
 ) -> Result(Asset) {
   dict.get(builder.assets, asset_id)
-  |> result.try_recover(fn(_) {
-    snag.error("failed to find asset " <> asset_id)
-  })
+  |> result.replace_error(snag.new("failed to find asset " <> asset_id))
 }
 
 /// Add multiple assets.
@@ -117,9 +113,7 @@ fn parse_erc20_response(response: eth.RpcResponse) -> Result(Int) {
     eth.RpcResult(result) -> {
       use value <- result.try(
         int.base_parse(string.drop_start(result, 2), 16)
-        |> result.try_recover(fn(_) {
-          snag.error("result is not valid hexadecimal")
-        }),
+        |> result.replace_error(snag.new("result is not valid hexadecimal")),
       )
       Ok(value)
     }
@@ -140,9 +134,7 @@ fn parse_erc721_response(response: eth.RpcResponse) -> Result(Int) {
     eth.RpcResult(result) -> {
       use value <- result.try(
         int.base_parse(string.drop_start(result, 2), 16)
-        |> result.try_recover(fn(_) {
-          snag.error("result is not valid hexadecimal")
-        }),
+        |> result.replace_error(snag.new("result is not valid hexadecimal")),
       )
       Ok(value)
     }
@@ -156,7 +148,7 @@ fn handle_query_balance(
 ) -> Result(Int) {
   use asset <- result.try(get_asset(builder, asset_id))
   use account <- result.try(asset.get_account(asset, account_id))
-  let address = account.get_address(account)
+  let address = account.address
   case asset {
     asset.ERC20(_, _, _, asset_contract) -> {
       use rpc_response <- result.try(get_balance_from_contract_asset(
@@ -226,18 +218,16 @@ fn handle_get_accounts(
 ) -> Result(List(blockchain.Account)) {
   use asset <- result.map(
     dict.get(builder.assets, asset_id)
-    |> result.try_recover(fn(_) {
-      snag.error("did not find asset id " <> asset_id)
-    }),
+    |> result.replace_error(snag.new("did not find asset id " <> asset_id)),
   )
   dict.fold(asset.accounts, [], fn(accounts, account_id, account) {
     [
       blockchain.Account(
         account_id,
-        account.get_address(account) |> eth.address_to_string,
+        account.address |> eth.address_to_string,
         dict.new(),
-        account.get_interval(account),
-        account.get_timeout(account),
+        account.interval,
+        account.timeout,
       ),
       ..accounts
     ]

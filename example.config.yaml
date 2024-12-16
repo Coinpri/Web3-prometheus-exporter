@@ -12,8 +12,8 @@ blockchains:
     accounts:
     - id: "address 0"
       address: "0x0000000000000000000000000000000000000000"
-      interval: 15
-      timeout: 5
+      interval: 1
+      timeout: 1
   - id: "USDT"
     type: "erc20"
     interval: 30
@@ -22,5 +22,5 @@ blockchains:
     accounts:
     - id: "address 0"
       address: "0x0000000000000000000000000000000000000000"
-      interval: 15
-      timeout: 5
+      interval: 1
+      timeout: 1
