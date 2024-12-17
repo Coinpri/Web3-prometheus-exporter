@@ -321,23 +321,43 @@ pub fn evm_config_test() {
 }
 
 pub fn prometheus_test() {
+  let extra_label_keys = ["an_extra_label", "another_extra_label"]
   let labels =
-    prometheus.Labels(
-      asset: "my asset",
-      blockchain: "none",
-      rpc_url: "sigma balls",
-      decimals: "about 8",
-      account: "for deez nuts",
-      address: "lol i'm not doxxing myself",
-      blockchain_type: "the one without scams",
-      asset_type: "very real and valuable I promise",
-    )
-  prometheus.init_balance("my_asset") |> should.be_ok
-  prometheus.set_balance("my_asset", 10, labels) |> should.be_ok
-  // asset names cannot contain whitespaces
-  prometheus.init_balance("invalid asset") |> should.be_error
+    [
+      #("asset", "my asset"),
+      #("blockchain", "none"),
+      #("rpc_url", "sigma balls"),
+      #("decimals", "about 8"),
+      #("account", "for deez nuts"),
+      #("address", "lol i'm not doxxing myself"),
+      #("blockchain_type", "the one without scams"),
+      #("asset_type", "very real and valuable I promise"),
+      #("an_extra_label", "an extra label value"),
+      #("another_extra_label", "another extra label value"),
+    ]
+    |> dict.from_list
+
+  prometheus.init_balance("my_asset", extra_label_keys)
+  |> should.be_ok
+
+  let assert Ok(#(mandatory_labels, extra_labels)) =
+    prometheus.labels_from_dict(labels)
+
+  prometheus.set_balance(
+    "my_asset",
+    10,
+    mandatory_labels,
+    extra_labels |> dict.values,
+  )
+  |> should.be_ok
+  // assert names cannot contain whitespaces
+  prometheus.init_balance("invalid asset", []) |> should.be_error
+  // assert extra labels are missing
+  prometheus.set_balance("my_asset", 10, mandatory_labels, [])
+  |> should.be_error
+
   prometheus.export_metrics()
   |> should.equal(
-    "# TYPE web3_exporter_balance_my_asset gauge\n# HELP web3_exporter_balance_my_asset Balance for asset my_asset\nweb3_exporter_balance_my_asset{asset=\"for deez nuts\",blockchain=\"lol i'm not doxxing myself\",rpc_url=\"my asset\",decimals=\"none\",account=\"very real and valuable I promise\",address=\"the one without scams\",blockchain_type=\"sigma balls\",asset_type=\"about 8\"} 10\n\n",
+    "# TYPE web3_exporter_balance_my_asset gauge\n# HELP web3_exporter_balance_my_asset Balance for asset my_asset\nweb3_exporter_balance_my_asset{asset=\"for deez nuts\",blockchain=\"lol i'm not doxxing myself\",rpc_url=\"my asset\",decimals=\"none\",account=\"very real and valuable I promise\",address=\"the one without scams\",blockchain_type=\"sigma balls\",asset_type=\"about 8\",an_extra_label=\"an extra label value\",another_extra_label=\"another extra label value\"} 10\n\n",
   )
 }
