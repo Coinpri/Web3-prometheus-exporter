@@ -3,6 +3,7 @@ import exporter/targets/evm/account
 import gleam/dict.{type Dict}
 import gleam/erlang/process
 import gleam/int
+import gleam/list
 import gleam/otp/actor
 import gleam/result
 import gleam/string
@@ -57,10 +58,7 @@ pub fn add_assets(
 /// with `blockchain.actor_to_child_builder`
 pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
   actor.Spec(
-    init: fn() {
-      process.self()
-      actor.Ready(Nil, process.new_selector())
-    },
+    init: fn() { actor.Ready(Nil, process.new_selector()) },
     init_timeout: 10,
     loop: fn(msg: Message, _state: Nil) {
       case msg {

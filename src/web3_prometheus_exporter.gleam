@@ -5,6 +5,7 @@ import exporter/targets/evm
 import exporter/util/glaml.{to_seq, to_string} as uglaml
 import glaml
 import gleam/erlang/process.{type Subject}
+import gleam/int
 import gleam/list
 import gleam/otp/erlang_supervisor as erlsup
 import gleam/result
@@ -24,7 +25,10 @@ pub fn supervisor_from_config(
   use blockchain_nodes <- uglaml.try_parse(node, "blockchains", to_seq)
 
   let blockchain_results =
-    list.map(blockchain_nodes, parse_blockchain(_, prometheus_subject, registry))
+    list.index_map(blockchain_nodes, fn(blockchain, index) {
+      parse_blockchain(blockchain, prometheus_subject, registry)
+      |> snag.context("parsing blockchain #" <> int.to_string(index))
+    })
     |> result.all
   use blockchains <- result.try(blockchain_results)
 
@@ -53,6 +57,12 @@ fn parse_blockchain(
         prometheus_subject,
         registry,
       )
-    _ -> snag.error("")
+      |> snag.context("building EVM child supervisor from yaml config")
+    _ ->
+      snag.error(
+        "blockchain type \""
+        <> kind
+        <> "\" not found. Valid values (not case sensitive):\n\"EVM\"",
+      )
   }
 }
