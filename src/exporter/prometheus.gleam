@@ -24,7 +24,7 @@ pub type Labels {
   )
 }
 
-const mandatory_labels = [
+pub const mandatory_labels = [
   "asset", "blockchain", "rpc_url", "decimals", "account", "address",
   "blockchain_type", "asset_type",
 ]

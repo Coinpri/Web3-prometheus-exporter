@@ -1,14 +1,12 @@
 import chip
 import eth_crypto/eth
 import exporter/blockchain
-import exporter/prometheus
 import exporter/targets/evm/account
 import exporter/targets/evm/asset
 import exporter/targets/evm/blockchain as evm_blockchain
 import exporter/util/glaml.{to_seq, to_string} as uglaml
 import glaml
 import gleam/dict.{type Dict}
-import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
 import gleam/otp/erlang_supervisor as erlsup
@@ -25,7 +23,6 @@ import snag.{type Result}
 /// See `example.config.yaml` for config example.
 pub fn build_blockchain_child_process(
   config config: glaml.DocNode,
-  prometheus_subject subject: Subject(prometheus.Message),
   blockchain_process_registry registry: chip.Registry(
     blockchain.Message,
     String,
@@ -55,12 +52,11 @@ pub fn build_blockchain_child_process(
     // creating new `evm_blockchain` builder, adding assets to it,
     // building an `otp/actor` from it,
     // and converting that actor to a `erlang_supervisor.ChildBuilder`
-    evm_blockchain.new(rpc_url)
+    evm_blockchain.new(blockchain_id, rpc_url)
     |> evm_blockchain.add_assets(assets)
     |> evm_blockchain.to_actor
     |> blockchain.actor_to_child_builder(
       blockchain_id,
-      subject,
       registry,
       optional_blockchain_interval,
       optional_blockchain_timeout,

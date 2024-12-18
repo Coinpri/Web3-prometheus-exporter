@@ -1,10 +1,8 @@
 import chip
 import exporter/blockchain
-import exporter/prometheus
 import exporter/targets/evm
 import exporter/util/glaml.{to_seq, to_string} as uglaml
 import glaml
-import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
 import gleam/otp/erlang_supervisor as erlsup
@@ -18,7 +16,6 @@ const default_restart_period = 5
 
 pub fn supervisor_from_config(
   config: glaml.Document,
-  prometheus_subject: Subject(prometheus.Message),
   registry: chip.Registry(blockchain.Message, String),
 ) -> Result(erlsup.Supervisor(erlsup.Classic)) {
   let node = glaml.doc_node(config)
@@ -26,7 +23,7 @@ pub fn supervisor_from_config(
 
   let blockchain_results =
     list.index_map(blockchain_nodes, fn(blockchain, index) {
-      parse_blockchain(blockchain, prometheus_subject, registry)
+      parse_blockchain(blockchain, registry)
       |> snag.context("parsing blockchain #" <> int.to_string(index))
     })
     |> result.all
@@ -46,17 +43,12 @@ pub fn supervisor_from_config(
 
 fn parse_blockchain(
   blockchain_config: glaml.DocNode,
-  prometheus_subject: Subject(prometheus.Message),
   registry: chip.Registry(blockchain.Message, String),
 ) -> Result(erlsup.ChildBuilder) {
   use kind <- uglaml.try_parse(blockchain_config, "type", to_string)
   case string.lowercase(kind) {
     "evm" ->
-      evm.build_blockchain_child_process(
-        blockchain_config,
-        prometheus_subject,
-        registry,
-      )
+      evm.build_blockchain_child_process(blockchain_config, registry)
       |> snag.context("building EVM child supervisor from yaml config")
     _ ->
       snag.error(

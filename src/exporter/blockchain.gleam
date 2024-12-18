@@ -6,6 +6,7 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/otp/actor
 import gleam/otp/erlang_supervisor as erlsup
+import gleam/result
 import gleam/yielder
 import snag
 
@@ -14,14 +15,20 @@ pub type Message {
   QueryBalance(
     asset_id: String,
     account_id: String,
-    caller_subject: Subject(snag.Result(Int)),
+    caller_subject: Subject(
+      snag.Result(List(#(Int, prometheus.Labels, Dict(String, String)))),
+    ),
   )
   GetAssets(caller_subject: Subject(List(Asset)))
   GetAccounts(
     asset_id: String,
     caller_subject: Subject(snag.Result(List(Account))),
   )
-  // GetExtraLabels(caller_subject)
+  GetExtraLabels(
+    asset_id: String,
+    account_id: String,
+    caller_subject: Subject(List(String)),
+  )
 }
 
 /// Generalized Asset type returned by the `GetAssets`
@@ -30,7 +37,7 @@ pub type Asset {
   Asset(
     id: String,
     kind: String,
-    details: Dict(String, String),
+    // details: Dict(String, String),
     timeout: Option(Int),
     interval: Option(Int),
   )
@@ -42,7 +49,7 @@ pub type Account {
   Account(
     id: String,
     address: String,
-    details: Dict(String, String),
+    // details: Dict(String, String),
     timeout: Option(Int),
     interval: Option(Int),
   )
@@ -64,7 +71,6 @@ const default_interval = 15_000
 pub fn actor_to_child_builder(
   blockchain_actor blockchain_actor: actor.Spec(Nil, Message),
   blockchain_id blockchain_id: String,
-  prometheus_subject prometheus_subject: Subject(prometheus.Message),
   registry registry: chip.Registry(Message, String),
   blockchain_interval blockchain_interval: Option(Int),
   blockchain_timeout blockchain_timeout: Option(Int),
@@ -82,6 +88,7 @@ pub fn actor_to_child_builder(
 
     let assets = process.call(evm_process_subject, GetAssets, 100)
     use asset <- list.each(assets)
+
     let assert Ok(accounts) =
       process.call(evm_process_subject, GetAccounts(asset.id, _), 100)
     use account <- list.each(accounts)
@@ -108,12 +115,8 @@ pub fn actor_to_child_builder(
         asset.id <> "-" <> account.id,
         make_timer_loop(
           evm_process_subject,
-          prometheus_subject,
           asset.id,
-          asset.details,
           account.id,
-          account.address,
-          account.details,
           timeout,
           interval,
         ),
@@ -138,12 +141,8 @@ pub fn actor_to_child_builder(
 /// then forwards the result to the prometheus subject on balance changes.
 fn make_timer_loop(
   blockchain_subject: Subject(Message),
-  prometheus_subject: Subject(prometheus.Message),
   asset_id: String,
-  asset_details: Dict(String, String),
   account_id: String,
-  account_address: String,
-  account_details: Dict(String, String),
   timeout_s: Int,
   interval_s: Int,
 ) -> fn() -> Result(Pid, Nil) {
@@ -155,7 +154,16 @@ fn make_timer_loop(
     Ok(process.start(
       fn() {
         let subject = process.new_subject()
-        use last_balance, _ <- yielder.fold(yielder.repeat(Nil), 0)
+        // Initializing prometheus balances
+        let extra_labels =
+          process.call(
+            blockchain_subject,
+            GetExtraLabels(asset_id, account_id, _),
+            100,
+          )
+        let _ = prometheus.init_balance(asset_id, extra_labels)
+
+        use _ <- yielder.each(yielder.repeat(Nil))
 
         // Using a `process.Timer` to send messages at regular intervals
         // The alternative would've been to use `process.sleep`, but
@@ -173,34 +181,17 @@ fn make_timer_loop(
         let assert Ok(balance_result) =
           process.receive(subject, interval_ms + timeout_ms)
 
-        // an error from `balance_result` means the blockchain process works,
-        // but failed to build the new balance, for instance
-        // from an RPC connectivity issue.
-        // In that case, we don't wanna crash, just keep the previous result.
-        case balance_result {
-          Error(_) -> last_balance
-          // Only contact the prometheus subject if the balance has changed.
-          Ok(new_balance) if new_balance == last_balance -> last_balance
-          Ok(new_balance) -> {
-            let labels =
-              dict.from_list([
-                #("asset", asset_id),
-                #("account", account_id),
-                #("address", account_address),
-              ])
-              |> dict.combine(asset_details, fn(_, _) {
-                panic as "found same label keys in asset details"
-              })
-              |> dict.combine(account_details, fn(_, _) {
-                panic as "found same label keys in account details"
-              })
-            process.send(
-              prometheus_subject,
-              prometheus.UpdateBalance(new_balance, labels),
-            )
-            new_balance
-          }
-        }
+        use balances <- result.map(balance_result)
+        use #(balance_value, balance_labels, balance_extra_labels) <- list.each(
+          balances,
+        )
+        let assert Ok(_) =
+          prometheus.set_balance(
+            asset_id,
+            balance_value,
+            balance_labels,
+            balance_extra_labels |> dict.values,
+          )
       },
       False,
     ))
