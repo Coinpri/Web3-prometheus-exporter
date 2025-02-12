@@ -155,13 +155,14 @@ fn make_timer_loop(
       fn() {
         let subject = process.new_subject()
         // Initializing prometheus balances
-        let extra_labels =
-          process.call(
-            blockchain_subject,
-            GetExtraLabels(asset_id, account_id, _),
-            100,
-          )
-        let _ = prometheus.init_balance(asset_id, extra_labels)
+        // let extra_labels =
+        //   process.call(
+        //     blockchain_subject,
+        //     GetExtraLabels(asset_id, account_id, _),
+        //     100,
+        //   )
+        // TODO: switch from prometheus.erl to Themis and skip the init
+        // let _ = prometheus.init_balance(asset_id, extra_labels)
 
         use _ <- yielder.each(yielder.repeat(Nil))
 
@@ -187,10 +188,9 @@ fn make_timer_loop(
         )
         let assert Ok(_) =
           prometheus.set_balance(
-            asset_id,
             balance_value,
             balance_labels,
-            balance_extra_labels |> dict.values,
+            balance_extra_labels,
           )
       },
       False,

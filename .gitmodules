@@ -1,3 +1,6 @@
 [submodule "EVM_Gleam"]
 	path = EVM_Gleam
 	url = git@github.com:guillheu/EVM_Gleam.git
+[submodule "otp"]
+	path = otp
+	url = git@github.com:guillheu/otp.git

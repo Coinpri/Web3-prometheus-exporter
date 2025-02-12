@@ -15,14 +15,14 @@ target = "erlang"
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
-glaml = ">= 2.0.0 and < 3.0.0"
+glaml = ">= 3.0.0 and < 4.0.0"
 snag = ">= 1.0.0 and < 2.0.0"
 evm_gleam = { path="./EVM_Gleam"}
-gleam_otp = { path="../otp"}
+gleam_otp = { path="./otp"}
 gleam_erlang = ">= 0.32.0 and < 1.0.0"
 chip = ">= 1.0.0 and < 2.0.0"
 gleam_yielder = ">= 1.1.0 and < 2.0.0"
-promgleam = ">= 0.2.0 and < 1.0.0"
+themis = ">= 3.0.0 and < 4.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

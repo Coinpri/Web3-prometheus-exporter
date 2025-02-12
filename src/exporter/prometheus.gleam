@@ -2,9 +2,11 @@ import exporter/util/result as uresult
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result
-import promgleam/metrics/gauge
-import promgleam/registry
 import snag.{type Result}
+import themis
+import themis/gauge
+import themis/internal/metric
+import themis/number
 
 //TODO: replace any usage of this Message with `set_balance`
 pub type Message {
@@ -29,33 +31,46 @@ pub const mandatory_labels = [
   "blockchain_type", "asset_type",
 ]
 
-const registry = "default"
-
 const metrics_prefix = "web3_exporter"
 
-pub fn init_balance(asset_id: String, extra_labels: List(String)) -> Result(Nil) {
-  gauge.create_gauge(
-    registry,
-    metric_name(asset_id),
-    "Balance for asset " <> asset_id,
-    mandatory_labels |> list.append(extra_labels),
-  )
-  |> result.try_recover(fn(msg) { snag.error(msg) })
+const balance_metric_name = metrics_prefix <> "_balance"
+
+pub fn init() -> Nil {
+  themis.init()
+  let assert Ok(_) = gauge.new(balance_metric_name, "Blockchain wallet balance")
+    as "failed to create balance metric"
+  Nil
 }
 
 pub fn set_balance(
-  asset_id: String,
   value: Int,
   labels: Labels,
-  extra_labels: List(String),
+  extra_labels: Dict(String, String),
 ) -> Result(Nil) {
-  gauge.set_gauge(
-    registry,
-    asset_id |> metric_name,
-    labels |> extract_labels_values |> list.append(extra_labels),
-    value,
-  )
-  |> result.try_recover(fn(msg) { snag.error(msg) })
+  // gauge.set_gauge(
+  //   registry,
+  //   asset_id |> metric_name,
+  //   labels |> extract_labels_values |> list.append(extra_labels),
+  //   value,
+  // )
+  let all_labels =
+    labels_to_dict(labels)
+    |> dict.combine(extra_labels, fn(_base_label, extra_label) { extra_label })
+  let observed_value = number.Int(value)
+  gauge.observe(balance_metric_name, all_labels, observed_value)
+  |> result.try_recover(fn(e) {
+    case e {
+      gauge.LabelError(_le) -> snag.error("invalid label name")
+      gauge.MetricError(me) ->
+        case me {
+          metric.InvalidMetricName(e) ->
+            snag.error("invalid metric name: " <> e)
+          metric.InvalidWordInName(e) ->
+            snag.error("invalid word in name: " <> e)
+        }
+      gauge.StoreError(_se) -> snag.error("unspecified store error")
+    }
+  })
 }
 
 pub fn labels_from_dict(
@@ -85,22 +100,19 @@ pub fn labels_from_dict(
 }
 
 pub fn export_metrics() -> String {
-  registry.print_as_text(registry)
+  let assert Ok(r) = themis.print()
+  r
 }
 
-fn extract_labels_values(labels: Labels) -> List(String) {
-  [
-    labels.account,
-    labels.address,
-    labels.asset,
-    labels.blockchain,
-    labels.asset_type,
-    labels.blockchain_type,
-    labels.rpc_url,
-    labels.decimals,
-  ]
-}
-
-fn metric_name(asset_id: String) -> String {
-  metrics_prefix <> "_balance_" <> asset_id
+fn labels_to_dict(labels: Labels) -> Dict(String, String) {
+  dict.from_list([
+    #("asset", labels.asset),
+    #("blockchain", labels.blockchain),
+    #("rpc_url", labels.rpc_url),
+    #("decimals", labels.decimals),
+    #("account", labels.account),
+    #("address", labels.address),
+    #("blockchain_type", labels.blockchain_type),
+    #("asset_type", labels.asset_type),
+  ])
 }

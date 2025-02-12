@@ -22,7 +22,7 @@ import snag.{type Result}
 /// If using a `otp/supervisor` instead, a different function will be needed.
 /// See `example.config.yaml` for config example.
 pub fn build_blockchain_child_process(
-  config config: glaml.DocNode,
+  config config: glaml.Node,
   blockchain_process_registry registry: chip.Registry(
     blockchain.Message,
     String,
@@ -64,7 +64,7 @@ pub fn build_blockchain_child_process(
   }
 }
 
-/// Extract a dict of assets from a list of `glaml.DocNode`
+/// Extract a dict of assets from a list of `glaml.Node`
 /// Example:
 /// ```
 /// ...
@@ -77,9 +77,7 @@ pub fn build_blockchain_child_process(
 /// |> dict.from_list
 /// ```
 /// Returns an `Error` if any of the assets cannot be parsed.
-fn parse_assets(
-  assets: List(glaml.DocNode),
-) -> Result(Dict(String, asset.Asset)) {
+fn parse_assets(assets: List(glaml.Node)) -> Result(Dict(String, asset.Asset)) {
   let assets_result =
     {
       use asset_node, index <- list.index_map(assets)
@@ -135,7 +133,7 @@ fn parse_assets(
   result.map(assets_result, fn(assets) { dict.from_list(assets) })
 }
 
-/// Extract a dict of accounts from a list `glaml.DocNode`
+/// Extract a dict of accounts from a list `glaml.Node`
 /// Example:
 /// ```
 /// ...
@@ -146,7 +144,7 @@ fn parse_assets(
 /// ```
 /// Returns an `Error` if any of the accounts cannot be parsed.
 fn parse_accounts(
-  accounts: List(glaml.DocNode),
+  accounts: List(glaml.Node),
 ) -> Result(Dict(String, account.Account)) {
   let account_results =
     {
@@ -184,11 +182,11 @@ fn parse_accounts(
 /// Basically just extracts the non-standard `contract_address` field
 /// from an asset glaml node. Returns an `Error` if not found.
 /// Builds a new `asset.ERC20` from the found smart contract address
-fn parse_erc20_asset(asset_node: glaml.DocNode) -> Result(asset.Asset) {
+fn parse_erc20_asset(asset_node: glaml.Node) -> Result(asset.Asset) {
   use contract_address <- result.try(case
-    glaml.sugar(asset_node, "contract_address")
+    glaml.select_sugar(asset_node, "contract_address")
   {
-    Ok(glaml.DocNodeStr(address)) -> Ok(address)
+    Ok(glaml.NodeStr(address)) -> Ok(address)
     _ -> snag.error("could not parse field \"contract_address\"")
   })
   asset.new_erc20(contract_address)
@@ -197,11 +195,11 @@ fn parse_erc20_asset(asset_node: glaml.DocNode) -> Result(asset.Asset) {
 /// Basically just extracts the non-standard `contract_address` field
 /// from an asset glaml node. Returns an `Error` if not found.
 /// Builds a new `asset.ERC721` from the found smart contract address
-fn parse_erc721_asset(asset_node: glaml.DocNode) -> Result(asset.Asset) {
+fn parse_erc721_asset(asset_node: glaml.Node) -> Result(asset.Asset) {
   use contract_address <- result.try(case
-    glaml.sugar(asset_node, "contract_address")
+    glaml.select_sugar(asset_node, "contract_address")
   {
-    Ok(glaml.DocNodeStr(address)) -> Ok(address)
+    Ok(glaml.NodeStr(address)) -> Ok(address)
     _ -> snag.error("could not parse field \"contract_address\"")
   })
   asset.new_erc721(contract_address)

@@ -1,19 +1,14 @@
 import eth_crypto/eth
 import exporter/blockchain
 import exporter/prometheus
-import exporter/targets/evm
 import exporter/targets/evm/account
 import exporter/targets/evm/asset
 import exporter/targets/evm/blockchain as evm_blockchain
-import glaml
 import gleam/dict
-import gleam/io
 import gleam/option.{None, Some}
 import gleam/string
-import promgleam/metrics/gauge
-import promgleam/registry
 import snag
-import web3_prometheus_exporter
+import themis/internal/store
 
 import chip
 import gleam/erlang/process
@@ -195,6 +190,7 @@ pub fn evm_test() {
 }
 
 pub fn evm_otp_test() {
+  prometheus.init()
   let registry = chip.start(chip.Unnamed) |> should.be_ok
 
   let account =
@@ -347,6 +343,8 @@ pub fn evm_otp_test() {
       None,
     ),
   ])
+
+  store.clear()
   // let prometheus.UpdateBalance(new_balance_ether, labels_ether) =
   //   process.receive(prometheus_subject, 1500) |> should.be_ok
   // let prometheus.UpdateBalance(new_balance_arbitrum, labels_arbitrum) =
@@ -381,7 +379,7 @@ pub fn evm_otp_test() {
 }
 
 pub fn prometheus_test() {
-  let extra_label_keys = ["an_extra_label", "another_extra_label"]
+  prometheus.init()
   let labels =
     [
       #("asset", "my asset"),
@@ -397,27 +395,19 @@ pub fn prometheus_test() {
     ]
     |> dict.from_list
 
-  prometheus.init_balance("my_asset", extra_label_keys)
-  |> should.be_ok
-
   let assert Ok(#(mandatory_labels, extra_labels)) =
     prometheus.labels_from_dict(labels)
 
-  prometheus.set_balance(
-    "my_asset",
-    10,
-    mandatory_labels,
-    extra_labels |> dict.values,
-  )
+  prometheus.set_balance(10, mandatory_labels, extra_labels)
   |> should.be_ok
-  // assert names cannot contain whitespaces
-  prometheus.init_balance("invalid asset", []) |> should.be_error
-  // assert extra labels are missing
-  prometheus.set_balance("my_asset", 10, mandatory_labels, [])
-  |> should.be_error
-  // TODO:
-  // prometheus.export_metrics()
-  // |> should.equal(
-  //   "# TYPE web3_exporter_balance_USDT gauge\n# HELP web3_exporter_balance_USDT Balance for asset USDT\nweb3_exporter_balance_USDT{asset=\"address 0\",blockchain=\"0x0000000000000000000000000000000000000000\",rpc_url=\"USDT\",decimals=\"Ethereum Mainnet\",account=\"erc20\",address=\"evm\",blockchain_type=\"https://rpc.ankr.com/eth\",asset_type=\"18\",contract_address=\"0xB8FDA5AEE55120247F16225FEFF266DFDB381D4C\"} 999999999999999999999999999999800275984997317699418316990\n# TYPE web3_exporter_balance_my_asset gauge\n# HELP web3_exporter_balance_my_asset Balance for asset my_asset\nweb3_exporter_balance_my_asset{asset=\"for deez nuts\",blockchain=\"lol i'm not doxxing myself\",rpc_url=\"my asset\",decimals=\"none\",account=\"very real and valuable I promise\",address=\"the one without scams\",blockchain_type=\"sigma balls\",asset_type=\"about 8\",an_extra_label=\"an extra label value\",another_extra_label=\"another extra label value\"} 10\n# TYPE web3_exporter_balance_Ether gauge\n# HELP web3_exporter_balance_Ether Balance for asset Ether\nweb3_exporter_balance_Ether{asset=\"address 0\",blockchain=\"0x0000000000000000000000000000000000000000\",rpc_url=\"Ether\",decimals=\"Ethereum Mainnet\",account=\"native\",address=\"evm\",blockchain_type=\"https://rpc.ankr.com/eth\",asset_type=\"18\"} 13435859017771618576674\n\n",
-  // )
+
+  prometheus.export_metrics()
+  |> should.equal(
+    "\n# TYPE web3_exporter_balance gauge\n# HELP web3_exporter_balance Blockchain wallet balance\nweb3_exporter_balance{account=\"for deez nuts\",address=\"lol i'm not doxxing myself\",an_extra_label=\"an extra label value\",another_extra_label=\"another extra label value\",asset=\"my asset\",asset_type=\"very real and valuable I promise\",blockchain=\"none\",blockchain_type=\"the one without scams\",decimals=\"about 8\",rpc_url=\"sigma balls\"} 10\n\n\n",
+  )
+  // # TYPE web3_exporter_balance gauge
+  // # HELP web3_exporter_balance Blockchain wallet balance
+  // web3_exporter_balance{account="for deez nuts",address="lol i'm not doxxing myself",an_extra_label="an extra label value",another_extra_label="another extra label value",asset="my asset",asset_type="very real and valuable I promise",blockchain="none",blockchain_type="the one without scams",decimals="about 8",rpc_url="sigma balls"} 10
+
+  let assert Ok(_) = store.clear()
 }

@@ -18,12 +18,12 @@ pub fn supervisor_from_config(
   config: glaml.Document,
   registry: chip.Registry(blockchain.Message, String),
 ) -> Result(erlsup.Supervisor(erlsup.Classic)) {
-  let node = glaml.doc_node(config)
+  let node = config.root
   use blockchain_nodes <- uglaml.try_parse(node, "blockchains", to_seq)
 
   let blockchain_results =
-    list.index_map(blockchain_nodes, fn(blockchain, index) {
-      parse_blockchain(blockchain, registry)
+    list.index_map(blockchain_nodes, fn(blockchain_config, index) {
+      parse_blockchain_config(blockchain_config, registry)
       |> snag.context("parsing blockchain #" <> int.to_string(index))
     })
     |> result.all
@@ -41,8 +41,8 @@ pub fn supervisor_from_config(
   |> result.replace_error(snag.new("failed to start top-level supervisor"))
 }
 
-fn parse_blockchain(
-  blockchain_config: glaml.DocNode,
+fn parse_blockchain_config(
+  blockchain_config: glaml.Node,
   registry: chip.Registry(blockchain.Message, String),
 ) -> Result(erlsup.ChildBuilder) {
   use kind <- uglaml.try_parse(blockchain_config, "type", to_string)
