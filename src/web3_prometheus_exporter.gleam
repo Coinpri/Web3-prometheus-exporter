@@ -1,9 +1,13 @@
 import chip
 import exporter/blockchain
+import exporter/http_server
+import exporter/prometheus
 import exporter/targets/evm
 import exporter/util/glaml.{to_seq, to_string} as uglaml
 import glaml
+import gleam/erlang/process
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/otp/erlang_supervisor as erlsup
 import gleam/result
@@ -13,6 +17,24 @@ import snag.{type Result}
 const default_restart_intensity = 1
 
 const default_restart_period = 5
+
+const default_port = 9855
+
+const default_bind = "localhost"
+
+pub fn main() {
+  prometheus.init()
+  let assert Ok([document]) = glaml.parse_file("config.yaml")
+    as "expecting config.yaml file with exactly 1 yaml root"
+  let assert Ok(registry) = chip.start(chip.Named("web3_prometheus_exporter"))
+    as "failed to create chip registry"
+  case supervisor_from_config(document, registry) {
+    Error(e) -> panic as snag.pretty_print(e)
+    Ok(_sup) -> io.println("successfully started supervisor")
+  }
+  let assert Ok(_) = http_server.start_server(default_port, default_bind)
+  process.sleep_forever()
+}
 
 pub fn supervisor_from_config(
   config: glaml.Document,

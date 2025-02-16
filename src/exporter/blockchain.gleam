@@ -179,8 +179,12 @@ fn make_timer_loop(
         // Waiting for the response from the timer.
         // Asserting the result because if the blockchain process isn't responding,
         // this timer process is dangling and useless and should die.
-        let assert Ok(balance_result) =
+        let balance_result =
           process.receive(subject, interval_ms + timeout_ms)
+          |> result.replace_error(snag.new(
+            "blockchain connector process failed to reply in a timely fashion. Try increasing your intervals or timeouts.",
+          ))
+          |> result.flatten
 
         use balances <- result.map(balance_result)
         use #(balance_value, balance_labels, balance_extra_labels) <- list.each(
