@@ -3,6 +3,7 @@ import exporter/blockchain
 import exporter/http_server
 import exporter/prometheus
 import exporter/targets/evm
+import exporter/targets/substrate
 import exporter/util/glaml.{to_seq, to_string} as uglaml
 import glaml
 import gleam/erlang/process
@@ -72,6 +73,9 @@ fn parse_blockchain_config(
     "evm" ->
       evm.build_blockchain_child_process(blockchain_config, registry)
       |> snag.context("building EVM child supervisor from yaml config")
+    "substrate" ->
+      substrate.build_blockchain_child_process(blockchain_config, registry)
+      |> snag.context("building Substrate child supervisor from yaml config")
     _ ->
       snag.error(
         "blockchain type \""
