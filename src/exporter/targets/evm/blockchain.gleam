@@ -73,24 +73,10 @@ pub fn to_actor(builder: Builder) -> actor.Spec(Nil, Message) {
           process.send(caller_subject, handle_get_assets(builder))
         GetAccounts(asset_id, caller_subject) ->
           process.send(caller_subject, handle_get_accounts(builder, asset_id))
-        blockchain.GetExtraLabels(asset_id, _account_id, caller_subject) ->
-          process.send(
-            caller_subject,
-            handle_get_extra_labels(builder, asset_id),
-          )
       }
       actor.continue(Nil)
     },
   )
-}
-
-fn handle_get_extra_labels(builder: Builder, asset_id: String) -> List(String) {
-  case dict.get(builder.assets, asset_id) {
-    Ok(asset.ERC20(_, _, _, _)) | Ok(asset.ERC721(_, _, _, _)) -> [
-      "contract_address",
-    ]
-    _ -> []
-  }
 }
 
 /// `eth_call` the `balanceOf` function of either a ERC20 or ERC721 contract.

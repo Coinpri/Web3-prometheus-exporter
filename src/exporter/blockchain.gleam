@@ -24,11 +24,6 @@ pub type Message {
     asset_id: String,
     caller_subject: Subject(snag.Result(List(Account))),
   )
-  GetExtraLabels(
-    asset_id: String,
-    account_id: String,
-    caller_subject: Subject(List(String)),
-  )
 }
 
 /// Generalized Asset type returned by the `GetAssets`
