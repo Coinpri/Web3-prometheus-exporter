@@ -3,9 +3,15 @@ from metrics import start_http_server, create_metrics, update_metrics
 from structures import *
 from query import query_balances
 import time
+import sys
 
 def main():
-    config = Config()
+    if len(sys.argv) < 2:
+        config_file_path = "config.yml"
+    else:
+        config_file_path = sys.argv[1]
+
+    config = Config(config_file=config_file_path)
     assets = config.assets
     start_http_server()
 
