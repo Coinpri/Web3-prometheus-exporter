@@ -21,7 +21,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "11.1.0"
+      "version": "12.3.0"
     },
     {
       "type": "datasource",
@@ -67,10 +67,10 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
   "links": [],
   "panels": [
     {
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -78,6 +78,7 @@
         "y": 0
       },
       "id": 6,
+      "panels": [],
       "title": "General",
       "type": "row"
     },
@@ -98,7 +99,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -133,7 +134,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
@@ -172,7 +173,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           }
@@ -201,7 +202,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "11.1.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
@@ -235,7 +236,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           }
@@ -266,7 +267,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
@@ -301,7 +302,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -336,7 +337,7 @@
         "textMode": "name",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
@@ -367,12 +368,17 @@
           "custom": {
             "align": "auto",
             "cellOptions": {
-              "type": "auto",
-              "wrapText": false
+              "type": "auto"
             },
             "filterable": true,
+            "footer": {
+              "reducers": [
+                "sum"
+              ]
+            },
             "inspect": false,
-            "minWidth": 50
+            "minWidth": 50,
+            "wrapText": false
           },
           "mappings": [],
           "thresholds": {
@@ -380,7 +386,7 @@
             "steps": [
               {
                 "color": "semi-dark-red",
-                "value": null
+                "value": 0
               },
               {
                 "color": "green",
@@ -400,15 +406,7 @@
       "id": 24,
       "options": {
         "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "enablePagination": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": true
-        },
+        "enablePagination": false,
         "frameIndex": 1,
         "showHeader": true,
         "sortBy": [
@@ -418,7 +416,7 @@
           }
         ]
       },
-      "pluginVersion": "11.1.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
@@ -519,7 +517,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -554,7 +552,7 @@
         "textMode": "name",
         "wideLayout": true
       },
-      "pluginVersion": "11.1.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
@@ -608,6 +606,7 @@
             "axisLabel": "",
             "axisPlacement": "right",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 28,
             "gradientMode": "opacity",
@@ -627,6 +626,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -643,7 +643,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -669,11 +669,12 @@
           "showLegend": false
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "11.1.0",
+      "pluginVersion": "12.3.0",
       "repeat": "account",
       "repeatDirection": "v",
       "targets": [
@@ -716,6 +717,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 32,
             "gradientMode": "opacity",
@@ -732,6 +734,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -748,7 +751,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           }
@@ -770,10 +773,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.0",
       "repeat": "account",
       "repeatDirection": "v",
       "targets": [
@@ -798,8 +803,9 @@
       "type": "timeseries"
     }
   ],
+  "preload": false,
   "refresh": "1m",
-  "schemaVersion": 39,
+  "schemaVersion": 42,
   "tags": [],
   "templating": {
     "list": [
@@ -811,10 +817,8 @@
           "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values({__name__=~\"^web3_prometheus_exporter_.+_account_balance$\"},asset_name)",
-        "hide": 0,
         "includeAll": false,
         "label": "Asset",
-        "multi": false,
         "name": "asset",
         "options": [],
         "query": {
@@ -824,8 +828,6 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
@@ -849,8 +851,6 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
@@ -859,22 +859,20 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "query_result(sum by (decimals) (rate({__name__=~\"^web3_prometheus_exporter_.+_account_balance$\", asset_name=\"$asset\"}[1m])))",
+        "definition": "label_values({__name__=~\"^web3_prometheus_exporter_.+_account_balance$\"},decimals)",
         "description": "Amount of decimals for a given blockchain asset",
         "hide": 2,
         "includeAll": false,
         "label": "Decimals",
-        "multi": false,
         "name": "decimals",
         "options": [],
         "query": {
-          "qryType": 3,
-          "query": "query_result(sum by (decimals) (rate({__name__=~\"^web3_prometheus_exporter_.+_account_balance$\", asset_name=\"$asset\"}[1m])))",
+          "qryType": 1,
+          "query": "label_values({__name__=~\"^web3_prometheus_exporter_.+_account_balance$\"},decimals)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
-        "regex": "/.*decimals=\"(?<text>.*?)\"./",
-        "skipUrlSync": false,
+        "regex": "",
         "sort": 2,
         "type": "query"
       }
@@ -888,6 +886,7 @@
   "timezone": "browser",
   "title": "Web3 Prometheus Exporter",
   "uid": "fdubwa7q2itj4b",
-  "version": 45,
-  "weekStart": ""
+  "version": 2,
+  "weekStart": "",
+  "id": null
 }
