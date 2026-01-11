@@ -1,7 +1,7 @@
-from config import Config
-from metrics import start_http_server, create_metrics, update_metrics
-from structures import *
-from query import query_balances
+from web3_prometheus_exporter.config import Config
+from web3_prometheus_exporter.metrics import start_http_server, create_metrics, update_metrics
+from web3_prometheus_exporter.structures import *
+from web3_prometheus_exporter.query import query_balances
 import time
 import sys
 

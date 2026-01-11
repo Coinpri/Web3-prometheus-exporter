@@ -1,5 +1,5 @@
 import requests
-from structures import Balance, Account
+from web3_prometheus_exporter.structures import Balance, Account
 from typing import List, Dict, Any
 import bech32
 import hashlib

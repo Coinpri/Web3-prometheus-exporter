@@ -1,12 +1,12 @@
 import importlib
-from structures import *
+from web3_prometheus_exporter.structures import *
 from typing import List
 import time
 
 def query_balances(assets: List[Asset]):
     results = {}
     for asset in assets:
-        module = importlib.import_module(f'targets.{asset.module}')
+        module = importlib.import_module(f'web3_prometheus_exporter.targets.{asset.module}')
         # Fetching all balances for all accounts
         for account in asset.accounts:
             account.balances = module.get_balance(asset.blockchain.rpc_url, account, asset.extra_parameters)

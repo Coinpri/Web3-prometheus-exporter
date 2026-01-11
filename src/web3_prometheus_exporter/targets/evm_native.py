@@ -1,6 +1,6 @@
 import requests
-from structures import Balance, Account
-from typing import List, Dict, Any
+from web3_prometheus_exporter.structures import Balance, Account
+from web3_prometheus_exporter.typing import List, Dict, Any
 
 def get_balance(rpc_url: str, account: Account, extra_parameters: Dict[Any,Any]) -> List[Balance] :
     headers = {

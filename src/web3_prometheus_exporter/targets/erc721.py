@@ -1,6 +1,6 @@
-from web3 import Web3
-from structures import Balance, Account
-from typing import List, Dict, Any
+from web3_prometheus_exporter.web3 import Web3
+from web3_prometheus_exporter.structures import Balance, Account
+from web3_prometheus_exporter.typing import List, Dict, Any
 import json
 
 erc721_abi = json.loads('[{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"index","type":"uint256"}],"name":"tokenOfOwnerByIndex","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]')

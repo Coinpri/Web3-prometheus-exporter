@@ -1,5 +1,5 @@
-from structures import Balance, Account
-from typing import List, Dict, Any
+from web3_prometheus_exporter.structures import Balance, Account
+from web3_prometheus_exporter.typing import List, Dict, Any
 
 
 # This function is optional. It allows you to declare arbitrary labels for the balances of your asset.
@@ -8,7 +8,7 @@ def get_extra_label_names():
     return ['arbitrary_label_for_prometheus_metric']
 
 # This function MUST be declared and MUST have its arguments typed as shown below.
-# The `rpc_url` will contain the string from the asset's `blockchain.rpc_url` field in the `config.yaml` file.
+# The `rpc_url` will contain the string from web3_prometheus_exporter.the asset's `blockchain.rpc_url` field in the `config.yaml` file.
 # The `account` will contain all the fields and optional custom subfields of the `accounts` of the configured asset. See the `structues.py` file for more details on the Accounts fields.
 def get_balance(rpc_url: str, account: Account, extra_parameters: Dict[Any,Any]) -> List[Balance]:
 

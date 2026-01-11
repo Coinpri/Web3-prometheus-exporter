@@ -1,8 +1,8 @@
 import importlib
 from prometheus_client import start_http_server as start_server
 from prometheus_client import Gauge
-from config import Config
-from structures import *
+from web3_prometheus_exporter.config import Config
+from web3_prometheus_exporter.structures import *
 
 gauges = {}
 config = Config()
@@ -37,7 +37,7 @@ def create_metrics(assets):
         # Create balance gauges
         gauge_name = get_account_balance_metric_name(asset.id)
         gauge_description = f"{asset.name} asset balance on {asset.blockchain.name}"
-        module = importlib.import_module(f'targets.{asset.module}')
+        module = importlib.import_module(f'web3_prometheus_exporter.targets.{asset.module}')
         if hasattr(module, 'get_extra_label_names'):
             extra_label_names = module.get_extra_label_names()
         else:

@@ -2,11 +2,11 @@ import pytest
 import importlib
 import os
 import inspect
-from typing import List, Dict, Any
+from web3_prometheus_exporter.typing import List, Dict, Any
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from structures import Balance, Account
+from web3_prometheus_exporter.structures import Balance, Account
 
 # Directory where the target modules are located
 TARGETS_DIR = 'src/targets'

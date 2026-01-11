@@ -1,5 +1,5 @@
 import yaml
-from structures import *
+from web3_prometheus_exporter.structures import *
 from typing import List
 import os
 

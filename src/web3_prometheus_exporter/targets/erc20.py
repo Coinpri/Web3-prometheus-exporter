@@ -1,6 +1,6 @@
-from web3 import Web3
-from structures import Balance, Account
-from typing import List, Dict, Any
+from web3_prometheus_exporter.web3 import Web3
+from web3_prometheus_exporter.structures import Balance, Account
+from web3_prometheus_exporter.typing import List, Dict, Any
 import json
 
 erc20_abi = json.loads('[{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"}]')
