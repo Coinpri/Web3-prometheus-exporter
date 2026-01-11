@@ -5,7 +5,6 @@ from web3_prometheus_exporter.config import Config
 from web3_prometheus_exporter.structures import *
 
 gauges = {}
-config = Config()
 balance_metric_common_labels = [
     "asset_id",
     "asset_name",
@@ -30,6 +29,7 @@ validator_status_metric_common_labels = [
 ]
 
 def start_http_server():
+    config = Config.get_instance()
     start_server(config.port, addr=config.bind_addr)
 
 def create_metrics(assets):

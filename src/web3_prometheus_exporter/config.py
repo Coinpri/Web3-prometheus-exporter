@@ -18,7 +18,7 @@ class Config:
             cls._instance.__initialized = False
         return cls._instance
 
-    def __init__(self, config_file='config.yaml'):
+    def __init__(self, config_file):
         if self.__initialized:
             return
         self.config_file = config_file
@@ -33,3 +33,10 @@ class Config:
             self.port = int(os.getenv('WEB3_PROMETHEUS_EXPORTER_PORT', self.port))
             self.bind_addr = os.getenv('WEB3_PROMETHEUS_EXPORTER_BIND_ADDR', self.bind_addr)
             self.query_timeout = int(os.getenv('WEB3_PROMETHEUS_EXPORTER_QUERY_TIMEOUT', self.query_timeout))
+
+    @classmethod
+    def get_instance(cls):
+        """Get the singleton instance. Raises error if not initialized."""
+        if cls._instance is None:
+            raise RuntimeError("Config not initialized. Call Config(config_file) first.")
+        return cls._instance
